@@ -412,6 +412,47 @@
   /* TOAST */
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a1f3a; border-radius:11px; padding:9px 18px; color:#fff; font-size:13px; font-weight:500; z-index:9999; box-shadow:0 6px 20px rgba(0,0,0,.22); white-space:nowrap; animation:fadeUp .16s ease; }
 
+  /* WELCOME & HELP MODALS */
+  .welcome-icon-wrap { text-align:center; margin-bottom:10px; }
+  .welcome-icon-wrap img { width:72px; height:72px; object-fit:contain; border-radius:16px; }
+  .welcome-title { font-size:18px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .welcome-sub { font-size:13px; color:var(--text-dim); text-align:center; margin-bottom:16px; }
+  .welcome-steps { display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
+  .welcome-step {
+    display:flex; align-items:flex-start; gap:10px;
+    background:var(--bg); border-radius:11px; padding:10px 12px;
+    border:1px solid var(--border);
+  }
+  .welcome-step-num {
+    width:24px; height:24px; min-width:24px; border-radius:50%;
+    background:var(--blue); color:#fff; font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  .welcome-step-text { font-size:13px; color:var(--text); line-height:1.45; }
+  .welcome-step-text strong { color:var(--blue); }
+  .welcome-share-box {
+    background:linear-gradient(135deg,var(--green-l),#e8f8f2);
+    border:1.5px solid #a8e8cc; border-radius:12px;
+    padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.5; color:var(--text);
+  }
+  .welcome-footer { font-size:13px; color:var(--text-mid); text-align:center; margin-bottom:14px; }
+
+  /* HELP modal sections */
+  .help-section { margin-bottom:14px; }
+  .help-section-title {
+    font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:1px;
+    text-transform:uppercase; margin-bottom:7px; padding-bottom:4px;
+    border-bottom:1px solid var(--border);
+  }
+  .help-row {
+    display:flex; gap:8px; align-items:flex-start;
+    padding:6px 0; border-bottom:1px solid #f0f2fa; font-size:13px;
+  }
+  .help-row:last-child { border-bottom:none; }
+  .help-icon { font-size:15px; flex-shrink:0; width:22px; text-align:center; margin-top:1px; }
+  .help-text { color:var(--text); line-height:1.45; }
+  .help-text strong { color:var(--blue); }
+
   ::-webkit-scrollbar { width:3px; }
   ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -467,6 +508,7 @@
     <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
     <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ בנק קודם</button>
     <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ בטל</button>
+    <button class="btn-undo" onclick="openHelp()" title="הוראות שימוש">❓</button>
   </div>
 </div>
 
@@ -589,6 +631,74 @@
     <div class="items-section">
       <div class="items-list" id="catItemsList"></div>
     </div>
+  </div>
+</div>
+
+<!-- WELCOME MODAL (first time only) -->
+<div class="overlay" id="welcomeOverlay" style="display:none" onclick="closeWelcome()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:380px;">
+    <div class="welcome-icon-wrap"><img id="welcomeIcon" src="" alt="🛒"></div>
+    <div class="welcome-title">ברוך הבא לרשימת הקניות!</div>
+    <div class="welcome-sub">שמחים שהצטרפת 😊 הנה כל מה שצריך לדעת:</div>
+    <div class="welcome-steps">
+      <div class="welcome-step">
+        <div class="welcome-step-num">1</div>
+        <div class="welcome-step-text"><strong>הוסף פריטים</strong> לבנק הפריטים</div>
+      </div>
+      <div class="welcome-step">
+        <div class="welcome-step-num">2</div>
+        <div class="welcome-step-text"><strong>לחץ על פריט</strong> כדי להעביר אותו לרשימה</div>
+      </div>
+      <div class="welcome-step">
+        <div class="welcome-step-num">3</div>
+        <div class="welcome-step-text">בחנות — סמן <strong>✓</strong> על כל מה שנכנס לעגלה</div>
+      </div>
+    </div>
+    <div class="welcome-share-box">
+      🔗 רוצה לקנות ביחד עם בן/בת הזוג? לחץ <strong>שיתוף</strong> ושלח קוד — ותעבדו יחד בו זמנית על אותה הרשימה.
+    </div>
+    <div class="welcome-footer">קניה נעימה 🛒</div>
+    <button class="btn-primary" onclick="closeWelcome()">בואו נתחיל!</button>
+  </div>
+</div>
+
+<!-- HELP MODAL (accessible anytime) -->
+<div class="overlay" id="helpOverlay" style="display:none" onclick="closeHelp()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
+    <button class="modal-close" onclick="closeHelp()">✕</button>
+    <div class="modal-title">❓ הוראות שימוש</div>
+
+    <div class="help-section">
+      <div class="help-section-title">בנק הפריטים</div>
+      <div class="help-row"><div class="help-icon">✍️</div><div class="help-text"><strong>הוספת פריט</strong> — כתוב שם ולחץ "הוסף +". האפליקציה מסווגת אוטומטית לקטגוריה (❓ = ממתין לאישורך)</div></div>
+      <div class="help-row"><div class="help-icon">👆</div><div class="help-text"><strong>העברה לרשימה</strong> — לחץ לחיצה קצרה על פריט</div></div>
+      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>עריכה / מחיקה</strong> — לחץ לחיצה ארוכה על פריט</div></div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title">רשימת הקניות</div>
+      <div class="help-row"><div class="help-icon">✓</div><div class="help-text"><strong>נכנס לעגלה</strong> — לחץ על הוי הירוק</div></div>
+      <div class="help-row"><div class="help-icon">✕</div><div class="help-text"><strong>לא רוצים</strong> — לחץ על ה-X האדום</div></div>
+      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>הערה / כמות</strong> — לחץ על עיפרון להוספת הערה</div></div>
+      <div class="help-row"><div class="help-icon">−</div><div class="help-text"><strong>הסרה</strong> — לחץ מינוס להחזרת הפריט לבנק</div></div>
+      <div class="help-row"><div class="help-icon">✅</div><div class="help-text"><strong>סיימתי קניות</strong> — לחץ "סיימתי" וכל הפריטים חוזרים לבנק</div></div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title">שיתוף עם בני משפחה</div>
+      <div class="help-row"><div class="help-icon">🔗</div><div class="help-text">לחץ <strong>שיתוף</strong> ושלח את הקוד בן 6 הספרות — כל מי שיכניס אותו יראה ויערוך את אותה רשימה בזמן אמת</div></div>
+      <div class="help-row"><div class="help-icon">🟢</div><div class="help-text">הנקודה בראש המסך: <strong>ירוק</strong> = מחובר · <strong>כתום</strong> = שומר · <strong>אדום</strong> = שגיאת חיבור</div></div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title">כללי</div>
+      <div class="help-row"><div class="help-icon">↩</div><div class="help-text"><strong>בטל</strong> — מבטל את הפעולה האחרונה</div></div>
+      <div class="help-row"><div class="help-icon">⇅</div><div class="help-text"><strong>סדר תצוגה</strong> — בנק למעלה או רשימה למעלה</div></div>
+      <div class="help-row"><div class="help-icon">📂</div><div class="help-text"><strong>קטגוריות</strong> — הוספה, עריכה ושינוי קטגוריה לכל פריט</div></div>
+      <div class="help-row"><div class="help-icon">🚪</div><div class="help-text"><strong>עזוב רשימה</strong> — דרך "שיתוף", מאפשר להצטרף לרשימה אחרת</div></div>
+    </div>
+
+    <button class="btn-secondary" onclick="closeHelp()" style="margin-top:4px;">סגור</button>
   </div>
 </div>
 
@@ -802,6 +912,12 @@ function enterList(code, listName) {
   syncBankSortButtons();
   applyViewOrder();
   subscribeToList(code);
+  // Show welcome only on first ever use
+  try {
+    if (!localStorage.getItem("shoppingApp_welcomed")) {
+      setTimeout(openWelcome, 600);
+    }
+  } catch(e) {}
 }
 
 function leaveList() {
@@ -839,6 +955,21 @@ function ensureAuth() {
     auth.signInAnonymously().then(resolve).catch(reject);
   });
 }
+
+// ── WELCOME & HELP ───────────────────────────────
+function openWelcome() {
+  // Set icon inside welcome modal
+  const iconEl = document.getElementById("welcomeIcon");
+  const mainIcon = document.getElementById("headerIcon");
+  if (iconEl && mainIcon && mainIcon.src) iconEl.src = mainIcon.src;
+  document.getElementById("welcomeOverlay").style.display = "flex";
+}
+function closeWelcome() {
+  document.getElementById("welcomeOverlay").style.display = "none";
+  try { localStorage.setItem("shoppingApp_welcomed", "1"); } catch(e) {}
+}
+function openHelp()  { document.getElementById("helpOverlay").style.display = "flex"; }
+function closeHelp() { document.getElementById("helpOverlay").style.display = "none"; }
 
 // ── SHARE MODAL ───────────────────────────────────
 function openShareModal()  { document.getElementById("shareOverlay").style.display = "flex"; }
