@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="קניות">
+<meta name="theme-color" content="#f0f4ff">
+<title>רשימת קניות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg:#f0f4ff; --bg2:#ffffff; --bg3:#e8edf8;
+    --blue:#3b6fd4; --blue-l:#6b94e8; --blue-pale:#dce6fb;
+    --green:#1a9e6b; --green-l:#d1f5e8;
+    --red:#d93f3f; --red-l:#fde8e8;
+    --orange:#ea7d1a; --orange-l:#fff3e0;
+    --text:#1a1f3a; --text-mid:#4a5270; --text-dim:#8a91b0;
+    --border:#d4daf0; --shadow:rgba(60,80,160,.07); --shadow-md:rgba(60,80,160,.13);
+  }
+  body { font-family:'Rubik',sans-serif; background:var(--bg); min-height:100vh; color:var(--text); direction:rtl; overflow-x:hidden; }
+
+  /* ── LOBBY ─────────────────────────────────────── */
+  .lobby {
+    position:fixed; inset:0; z-index:1000;
+    background:linear-gradient(135deg,#e8eeff 0%,#f5f0ff 100%);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lobby-card {
+    background:#fff; border-radius:24px; padding:28px 22px;
+    width:100%; max-width:380px;
+    box-shadow:0 20px 60px rgba(60,80,160,.18);
+    animation:slideIn .25s ease;
+  }
+  .lobby-logo { font-size:44px; text-align:center; margin-bottom:6px; }
+  .lobby-title { font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .lobby-sub { font-size:13px; color:var(--text-dim); text-align:center; margin-bottom:24px; }
+  .lobby-divider { display:flex; align-items:center; gap:10px; margin:16px 0; }
+  .lobby-divider-line { flex:1; height:1px; background:var(--border); }
+  .lobby-divider-text { font-size:11px; color:var(--text-dim); font-weight:600; letter-spacing:.5px; }
+  .lobby-section-title { font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .lobby-input {
+    width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:10px;
+    padding:10px 13px; color:var(--text); font-size:15px; outline:none;
+    font-family:inherit; transition:border-color .2s; margin-bottom:8px;
+    text-align:center; letter-spacing:3px; font-weight:700;
+  }
+  .lobby-input:focus { border-color:var(--blue-l); }
+  .lobby-input::placeholder { color:var(--text-dim); letter-spacing:0; font-weight:400; font-size:13px; }
+  .btn-lobby-primary {
+    width:100%; background:var(--blue); border:none; border-radius:11px; color:#fff;
+    padding:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 4px 14px rgba(59,111,212,.3); transition:all .15s;
+  }
+  .btn-lobby-primary:active { transform:scale(.97); background:#2f5ab8; }
+  .btn-lobby-secondary {
+    width:100%; background:var(--bg3); border:1.5px solid var(--border); border-radius:11px;
+    color:var(--text-mid); padding:12px; font-size:15px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .15s; margin-top:8px;
+  }
+  .btn-lobby-secondary:active { transform:scale(.97); }
+  .lobby-status { font-size:12px; color:var(--text-dim); text-align:center; margin-top:12px; min-height:18px; }
+  .lobby-status.error { color:var(--red); }
+
+  /* ── HEADER ─────────────────────────────────────── */
+  .header {
+    position:sticky; top:0; z-index:100;
+    background:rgba(240,244,255,.93); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border); padding:10px 12px;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:0 2px 10px var(--shadow);
+  }
+  .header-left { flex:1; min-width:0; }
+  .header-title { font-size:18px; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .sync-dot {
+    width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    background:#ccc; transition:background .3s;
+  }
+  .sync-dot.connected  { background:#1a9e6b; }
+  .sync-dot.syncing    { background:#ea7d1a; animation:pulse .8s infinite; }
+  .sync-dot.error      { background:var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .header-sub { font-size:11px; color:var(--text-dim); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .header-btns { display:flex; gap:5px; align-items:center; flex-shrink:0; }
+  .btn-undo {
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px;
+    color:var(--text-mid); padding:6px 9px; font-size:12px; font-weight:600;
+    cursor:pointer; line-height:1; transition:all .15s; white-space:nowrap; font-family:inherit;
+  }
+  .btn-undo:active { background:#d0d8f0; transform:scale(.95); }
+  .btn-undo:disabled { opacity:.3; cursor:default; }
+  .btn-view {
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px;
+    color:var(--text-mid); padding:6px 9px; font-size:12px; font-weight:600;
+    cursor:pointer; line-height:1; transition:all .15s; font-family:inherit; white-space:nowrap;
+  }
+  .btn-view:active { background:#d0d8f0; transform:scale(.95); }
+  .btn-share {
+    background:var(--green-l); border:1px solid #a8e8cc; border-radius:9px;
+    color:var(--green); padding:6px 9px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+  }
+  .btn-share:active { background:#b8f0d8; transform:scale(.97); }
+  .btn-cat {
+    background:var(--blue-pale); border:1px solid #b8cbf5; border-radius:9px;
+    color:var(--blue); padding:6px 9px; font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+  }
+  .btn-cat:active { background:#c8d8f8; transform:scale(.97); }
+
+  /* ── MAIN ─────────────────────────────────────── */
+  .main { padding:12px; max-width:600px; margin:0 auto; padding-bottom:40px; }
+
+  /* ADD BOX */
+  .add-box {
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:14px; padding:10px 11px; margin-bottom:14px;
+    box-shadow:0 2px 8px var(--shadow);
+  }
+  .add-box-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+  .add-box-label { font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+  .add-row { display:flex; gap:6px; }
+  .add-input {
+    flex:1; min-width:0; background:var(--bg); border:1.5px solid var(--border);
+    border-radius:9px; padding:9px 11px; color:var(--text); font-size:14px;
+    outline:none; font-family:inherit; transition:border-color .2s;
+  }
+  .add-input:focus { border-color:var(--blue-l); }
+  .add-input::placeholder { color:var(--text-dim); }
+  .btn-add {
+    flex-shrink:0; background:var(--blue); border:none; border-radius:9px;
+    color:#fff; padding:9px 13px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+    box-shadow:0 3px 8px rgba(59,111,212,.28); transition:all .15s;
+  }
+  .btn-add:active { transform:scale(.96); background:#2f5ab8; }
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrap { flex:1; min-width:0; position:relative; }
+  .add-input { width:100%; }
+  .autocomplete-suggestion {
+    position:absolute; top:0; right:0; left:0; padding:9px 11px;
+    font-size:14px; font-family:'Rubik',sans-serif; color:transparent;
+    pointer-events:none; white-space:nowrap; overflow:hidden;
+    border:1.5px solid transparent; border-radius:9px; line-height:1.4;
+  }
+  .autocomplete-suggestion .ac-typed { color:transparent; }
+  .autocomplete-suggestion .ac-hint  { color:var(--text-dim); }
+  .ac-dropdown {
+    position:absolute; top:calc(100% + 4px); right:0; left:0; z-index:200;
+    background:#fff; border:1.5px solid var(--border); border-radius:10px;
+    box-shadow:0 6px 20px var(--shadow-md); overflow:hidden;
+    max-height:200px; overflow-y:auto;
+  }
+  .ac-item {
+    padding:9px 12px; font-size:13px; cursor:pointer;
+    border-bottom:1px solid var(--border); color:var(--text); transition:background .1s;
+  }
+  .ac-item:last-child { border-bottom:none; }
+  .ac-item:active, .ac-item.ac-selected { background:var(--blue-pale); color:var(--blue); }
+  .ac-item strong { color:var(--blue); font-weight:700; }
+  .cat-preview { display:none; margin-top:6px; font-size:11px; color:var(--blue); background:var(--blue-pale); border-radius:6px; padding:3px 9px; }
+  .cat-preview:not(:empty) { display:inline-block; }
+
+  /* SECTION */
+  .sec-wrap { margin-bottom:14px; }
+  .sec-header { display:flex; align-items:center; gap:7px; margin-bottom:8px; flex-wrap:wrap; }
+  .sec-bar { width:3px; height:16px; border-radius:2px; flex-shrink:0; }
+  .sec-bar-blue  { background:linear-gradient(#6b94e8,#3b6fd4); }
+  .sec-bar-green { background:linear-gradient(#4cc9a0,#1a9e6b); }
+  .sec-title { font-size:15px; font-weight:700; }
+  .sec-count { padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+  .cnt-blue  { background:var(--blue-pale); color:var(--blue); }
+  .cnt-green { background:var(--green-l); color:var(--green); }
+  .btn-finish {
+    margin-right:auto; background:#2563eb; border:none; border-radius:9px;
+    color:#fff; padding:6px 12px; font-size:12px; font-weight:700;
+    cursor:pointer; font-family:inherit;
+    box-shadow:0 3px 8px rgba(37,99,235,.22); transition:all .15s;
+  }
+  .btn-finish:active { transform:scale(.96); background:#1d4ed8; }
+
+  /* BANK */
+  .bank-controls { margin-bottom:8px; display:flex; flex-direction:column; gap:6px; }
+  .bank-sort-row  { display:flex; gap:5px; }
+  .bank-search-input {
+    width:100%; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px;
+    padding:7px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit;
+    transition:border-color .2s;
+  }
+  .bank-search-input:focus { border-color:var(--blue-l); }
+  .bank-search-input::placeholder { color:var(--text-dim); }
+  .bank-cat-header {
+    width:100%; font-size:10px; font-weight:700; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--text-dim);
+    padding:6px 2px 2px 0; margin-top:4px;
+    border-bottom:1px solid var(--border); margin-bottom:3px;
+  }
+  .bank-grid { display:flex; flex-wrap:wrap; gap:6px; }
+  .bank-item {
+    background:var(--bg2); border:1.5px solid var(--border); border-radius:10px;
+    padding:5px 11px; color:var(--text); font-size:13px; font-weight:500;
+    cursor:pointer; user-select:none; -webkit-user-select:none;
+    box-shadow:0 1px 4px var(--shadow); transition:all .15s;
+  }
+  .bank-item:active { transform:scale(.93); background:var(--blue-pale); border-color:var(--blue-l); }
+  .bank-item-cat { font-size:10px; color:var(--text-dim); margin-right:3px; }
+  .bank-item-unconfirmed {
+    display:inline-block; font-size:11px; margin-right:3px; cursor:pointer; opacity:.8; transition:transform .15s;
+  }
+  .bank-item-unconfirmed:hover { transform:scale(1.2); opacity:1; }
+
+  /* EMPTY */
+  .empty {
+    text-align:center; padding:22px 12px; color:var(--text-dim); font-size:13px;
+    border:1.5px dashed var(--border); border-radius:14px; background:rgba(255,255,255,.5);
+  }
+  .empty-icon { font-size:26px; display:block; margin-top:7px; }
+
+  /* CART */
+  .cat-label {
+    font-size:10px; font-weight:700; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--text-dim);
+    margin:10px 0 4px 0; padding-right:2px;
+  }
+  .cart-item {
+    background:var(--bg2); border:1.5px solid var(--border); border-radius:10px;
+    margin-bottom:4px; box-shadow:0 1px 4px var(--shadow);
+    transition:background .22s,border-color .22s; overflow:hidden; animation:slideIn .18s ease;
+  }
+  .cart-item.done   { background:#edfaf4; border-color:#a8e8cc; }
+  .cart-item.cancel { background:var(--red-l); border-color:#f5b8b8; }
+  .cart-row { display:flex; align-items:center; padding:5px 6px 5px 5px; gap:4px; }
+  .cart-name { flex:1; font-size:13px; font-weight:500; color:var(--text); word-break:break-word; line-height:1.25; transition:color .22s; }
+  .cart-item.done   .cart-name { color:var(--green); }
+  .cart-item.cancel .cart-name { color:var(--red); }
+  .btn-icon {
+    width:28px; height:28px; min-width:28px; border-radius:7px; border:1.5px solid;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:13px; font-weight:700;
+    flex-shrink:0; font-family:inherit; background:none; transition:all .15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-icon:active { transform:scale(.87); }
+  .btn-check { border-color:#a8e8cc; color:var(--green); }
+  .btn-check.active { background:var(--green-l); border-color:var(--green); }
+  .btn-xmark { border-color:#f5b8b8; color:var(--red); }
+  .btn-xmark.active { background:var(--red-l); border-color:var(--red); }
+  .btn-minus { border-color:var(--border); color:var(--text-dim); font-size:17px; font-weight:300; }
+  .btn-minus:active { background:var(--bg3); }
+  .note-toggle { background:none; border:none; color:var(--text-dim); font-size:10px; cursor:pointer; padding:0 1px; flex-shrink:0; }
+  .cart-note-wrap { overflow:hidden; transition:max-height .18s ease,padding .18s ease; max-height:0; }
+  .cart-note-wrap.open { max-height:44px; padding:0 6px 5px; }
+  .note-text-display {
+    font-size:10px; color:var(--text-dim); background:var(--bg3); border-radius:6px;
+    padding:2px 7px; max-width:90px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    flex-shrink:0; cursor:pointer; border:1px solid var(--border);
+  }
+  .cart-note-input {
+    display:block; width:100%; background:var(--bg); border:1.5px solid var(--border);
+    border-radius:7px; padding:4px 9px; color:var(--text-mid); font-size:11px;
+    outline:none; font-family:inherit; transition:border-color .2s;
+  }
+  .cart-note-input:focus { border-color:var(--blue-l); }
+  .cart-note-input::placeholder { color:var(--text-dim); }
+
+  /* CONTEXT MENU */
+  .ctx-menu {
+    position:fixed; z-index:600; background:#fff; border:1px solid var(--border);
+    border-radius:12px; overflow:hidden; box-shadow:0 6px 24px var(--shadow-md);
+    min-width:150px; animation:fadeUp .13s ease;
+  }
+  .ctx-header { padding:8px 13px; font-size:11px; color:var(--text-dim); font-weight:600; border-bottom:1px solid var(--border); }
+  .ctx-btn { display:block; width:100%; padding:10px 15px; background:none; border:none; text-align:right; cursor:pointer; font-size:13px; font-family:inherit; transition:background .12s; }
+  .ctx-edit:active { background:var(--bg3); } .ctx-edit { color:var(--text); }
+  .ctx-del:active  { background:var(--red-l); } .ctx-del  { color:var(--red); }
+
+  /* OVERLAY */
+  .overlay {
+    position:fixed; inset:0; z-index:400;
+    background:rgba(30,40,90,.32); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    padding:16px; animation:fadeIn .15s ease;
+  }
+  .modal {
+    background:#fff; border:1px solid var(--border); border-radius:18px; padding:20px 16px;
+    width:100%; max-width:420px; max-height:88vh; overflow-y:auto;
+    box-shadow:0 20px 50px var(--shadow-md); animation:slideIn .18s ease; position:relative;
+  }
+  .modal-title { font-size:16px; font-weight:700; margin-bottom:14px; }
+  .modal-close {
+    position:absolute; top:12px; left:14px; background:var(--bg3); border:none;
+    border-radius:7px; color:var(--text-dim); width:26px; height:26px;
+    font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .form-label { font-size:11px; color:var(--text-dim); font-weight:700; display:block; margin-bottom:4px; margin-top:11px; }
+  .form-label:first-child { margin-top:0; }
+  .form-input,.form-select {
+    width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:9px;
+    padding:8px 11px; color:var(--text); font-size:14px; outline:none; font-family:inherit; display:block; transition:border-color .2s;
+  }
+  .form-input:focus,.form-select:focus { border-color:var(--blue-l); }
+  .form-input::placeholder { color:var(--text-dim); }
+  .form-select { cursor:pointer; } .form-select option { background:#fff; }
+  .btn-primary {
+    width:100%; background:var(--blue); border:none; border-radius:9px; color:#fff; padding:10px;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 3px 8px rgba(59,111,212,.22); transition:all .15s; margin-top:12px;
+  }
+  .btn-primary:active { transform:scale(.97); background:#2f5ab8; }
+  .btn-secondary {
+    width:100%; background:var(--bg3); border:1.5px solid var(--border); border-radius:9px;
+    color:var(--text-mid); padding:10px; font-size:14px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .15s; margin-top:7px;
+  }
+  .btn-secondary:active { transform:scale(.97); }
+  .btn-warn {
+    width:100%; background:#ea7d1a; border:none; border-radius:9px; color:#fff; padding:10px;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:12px; transition:all .15s;
+  }
+  .btn-warn:active { transform:scale(.97); }
+  .warn-icon  { font-size:24px; margin-bottom:7px; display:block; }
+  .warn-title { color:#b45309; font-size:14px; font-weight:600; margin-bottom:10px; line-height:1.45; }
+  .warn-list  { max-height:160px; overflow-y:auto; margin-bottom:4px; }
+  .warn-item  { padding:6px 10px; margin-bottom:4px; background:#fef3cd; border:1px solid #fcd97a; border-radius:8px; color:#7c4e10; font-size:13px; }
+
+  /* SHARE MODAL */
+  .share-code-box {
+    background:linear-gradient(135deg,var(--blue-pale),#ede8ff);
+    border:2px solid #b8cbf5; border-radius:14px;
+    padding:18px; text-align:center; margin:12px 0;
+  }
+  .share-code-label { font-size:11px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .share-code-value {
+    font-size:36px; font-weight:700; letter-spacing:8px; color:var(--blue);
+    font-family:monospace; direction:ltr; display:block;
+  }
+  .share-code-hint { font-size:11px; color:var(--text-dim); margin-top:8px; line-height:1.5; }
+  .btn-copy {
+    width:100%; background:var(--blue); border:none; border-radius:9px; color:#fff; padding:10px;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    box-shadow:0 3px 8px rgba(59,111,212,.22); transition:all .15s; margin-top:4px;
+  }
+  .btn-copy:active { transform:scale(.97); }
+  .btn-leave {
+    width:100%; background:var(--red-l); border:1.5px solid #f5b8b8; border-radius:9px;
+    color:var(--red); padding:10px; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:inherit; transition:all .15s; margin-top:7px;
+  }
+  .btn-leave:active { transform:scale(.97); }
+
+  /* CAT MODAL */
+  .cat-modal { max-width:460px; }
+  .sort-row { display:flex; gap:6px; margin-bottom:10px; flex-shrink:0; }
+  .btn-sort { padding:6px 12px; border-radius:8px; border:1.5px solid; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .btn-sort.active   { background:var(--blue-pale); border-color:var(--blue-l); color:var(--blue); }
+  .btn-sort.inactive { background:var(--bg3); border-color:var(--border); color:var(--text-dim); }
+  .cats-section {
+    flex-shrink:0; max-height:220px; overflow-y:auto;
+    border:1.5px solid var(--border); border-radius:12px;
+    background:var(--bg); padding:10px 10px 8px;
+  }
+  .cats-sec-title {
+    font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .cats-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
+  .cat-tag { display:flex; align-items:center; gap:3px; background:var(--bg2); border:1.5px solid var(--border); border-radius:8px; padding:4px 9px; }
+  .cat-tag-name { color:var(--text); font-size:12px; }
+  .cat-tag-edit-input { background:var(--bg); border:1.5px solid var(--blue-l); border-radius:6px; padding:2px 6px; color:var(--text); font-size:12px; font-family:inherit; outline:none; width:80px; }
+  .tag-btn { background:none; border:none; cursor:pointer; padding:0 2px; font-size:12px; }
+  .tag-btn-del { color:var(--red); }
+  .new-cat-row { display:flex; gap:6px; }
+  .btn-add-cat { flex-shrink:0; background:var(--blue); border:none; border-radius:9px; color:#fff; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .btn-add-cat:active { background:#2f5ab8; }
+  .cat-divider { flex-shrink:0; display:flex; align-items:center; gap:8px; margin:12px 0 8px; }
+  .cat-divider-line { flex:1; height:1px; background:var(--border); }
+  .cat-divider-label { font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase; white-space:nowrap; }
+  .items-section { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .items-list { overflow-y:auto; flex:1; min-height:80px; max-height:340px; }
+  .cat-group-header {
+    font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim);
+    padding:8px 2px 3px 0; margin-top:2px; border-bottom:1px solid var(--border); margin-bottom:4px;
+  }
+  .cat-group-header:first-child { padding-top:2px; }
+  .cat-item-row { display:flex; align-items:center; gap:6px; background:var(--bg); border:1.5px solid var(--border); border-radius:9px; padding:6px 10px; margin-bottom:4px; }
+  .cat-item-row.unconfirmed { border-color:#f5a623; background:#fffbf2; }
+  .cat-item-badge { font-size:13px; flex-shrink:0; cursor:pointer; padding:0 2px; }
+  .cat-item-badge:hover { transform:scale(1.2); }
+  .cat-item-name { flex:1; color:var(--text); font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cat-item-name-input { flex:1; min-width:0; background:#fff; border:1.5px solid var(--blue-l); border-radius:7px; padding:3px 7px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+  .cat-item-sel { flex-shrink:0; max-width:120px; min-width:70px; background:#fff; border:1.5px solid var(--border); border-radius:7px; padding:3px 6px; color:var(--text-mid); font-size:11px; font-family:inherit; outline:none; cursor:pointer; transition:border-color .15s; }
+  .cat-item-sel:focus { border-color:var(--blue-l); }
+  .cat-item-sel option { background:#fff; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a1f3a; border-radius:11px; padding:9px 18px; color:#fff; font-size:13px; font-weight:500; z-index:9999; box-shadow:0 6px 20px rgba(0,0,0,.22); white-space:nowrap; animation:fadeUp .16s ease; }
+
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
+  @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+  @keyframes fadeUp  { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+  @keyframes slideIn { from{opacity:0;transform:translateY(10px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+</style>
+</head>
+<body>
+
+<!-- ── LOBBY ─────────────────────────────────────── -->
+<div class="lobby" id="lobby">
+  <div class="lobby-card">
+    <div class="lobby-logo">🛒</div>
+    <div class="lobby-title">רשימת קניות</div>
+    <div class="lobby-sub">שתפו רשימה עם בני המשפחה בזמן אמת</div>
+
+    <div class="lobby-section-title">יצירת רשימה חדשה</div>
+    <button class="btn-lobby-primary" onclick="createList()">✨ צור רשימה חדשה</button>
+
+    <div class="lobby-divider">
+      <div class="lobby-divider-line"></div>
+      <div class="lobby-divider-text">או</div>
+      <div class="lobby-divider-line"></div>
+    </div>
+
+    <div class="lobby-section-title">הצטרפות לרשימה קיימת</div>
+    <input class="lobby-input" id="joinCodeInput" placeholder="הכנס קוד שיתוף (6 ספרות)" maxlength="6"
+      oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+      onkeydown="if(event.key==='Enter') joinList()">
+    <button class="btn-lobby-primary" onclick="joinList()">🤝 הצטרף לרשימה</button>
+
+    <div class="lobby-status" id="lobbyStatus"></div>
+  </div>
+</div>
+
+<!-- ── HEADER ─────────────────────────────────────── -->
+<div class="header" id="appHeader" style="display:none">
+  <div class="header-left">
+    <div class="header-title">
+      🛒 רשימת קניות
+      <div class="sync-dot" id="syncDot" title="מצב חיבור"></div>
+    </div>
+    <div class="header-sub" id="headerSub">טוען...</div>
+  </div>
+  <div class="header-btns">
+    <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ בטל</button>
+    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ בנק קודם</button>
+    <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
+    <button class="btn-cat" onclick="openCatModal()">📂 קטגוריות</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP ─────────────────────────────────────── -->
+<div class="main" id="appMain" style="display:none">
+  <div class="add-box">
+    <div class="add-box-top">
+      <span class="add-box-label">הוסף פריט לבנק הפריטים</span>
+    </div>
+    <div class="add-row">
+      <div class="autocomplete-wrap">
+        <input class="add-input" id="addInput" placeholder="שם הפריט..."
+          autocomplete="off" oninput="onAddInput(this.value)" onkeydown="onAddKeyDown(event)">
+        <div class="autocomplete-suggestion" id="acSuggestion"></div>
+      </div>
+      <button class="btn-add" onclick="addToBank()">הוסף +</button>
+    </div>
+    <span class="cat-preview" id="catPreview"></span>
+  </div>
+
+  <div id="sectionBank" class="sec-wrap">
+    <div class="sec-header">
+      <div class="sec-bar sec-bar-blue"></div>
+      <span class="sec-title">בנק הפריטים</span>
+      <span class="sec-count cnt-blue" id="bankCount">0 פריטים</span>
+    </div>
+    <div class="bank-controls">
+      <div class="bank-sort-row">
+        <button class="btn-sort inactive" id="bankSortNoneBtn"  onclick="setBankSort('none')">ברירת מחדל</button>
+        <button class="btn-sort inactive" id="bankSortAlphaBtn" onclick="setBankSort('alpha')">א-ב</button>
+        <button class="btn-sort active"   id="bankSortCatBtn"   onclick="setBankSort('cat')">קטגוריות</button>
+      </div>
+      <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
+    </div>
+    <div class="bank-grid" id="bankGrid"></div>
+  </div>
+
+  <div id="sectionCart">
+    <div class="sec-header">
+      <div class="sec-bar sec-bar-green"></div>
+      <span class="sec-title">רשימת קניות</span>
+      <span class="sec-count cnt-green" id="cartCount">0 פריטים</span>
+      <button class="btn-finish" id="finishBtn" onclick="handleFinish()" style="display:none">✅ סיימתי</button>
+    </div>
+    <div id="cartList"></div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctxMenu" style="display:none">
+  <div class="ctx-header" id="ctxName"></div>
+  <button class="ctx-btn ctx-edit" onclick="ctxEdit()">✏️ עריכה</button>
+  <button class="ctx-btn ctx-del"  onclick="ctxDelete()">🗑️ הסרה</button>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="editOverlay" style="display:none" onclick="closeEditModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <div class="modal-title">✏️ עריכת פריט</div>
+    <label class="form-label">שם</label>
+    <input class="form-input" id="editName" placeholder="שם הפריט">
+    <label class="form-label">קטגוריה</label>
+    <select class="form-select" id="editCat"></select>
+    <button class="btn-primary" onclick="saveEdit()">שמור שינויים</button>
+    <button class="btn-secondary" onclick="closeEditModal()">ביטול</button>
+  </div>
+</div>
+
+<!-- FINISH MODAL -->
+<div class="overlay" id="finishOverlay" style="display:none" onclick="closeFinishModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeFinishModal()">✕</button>
+    <span class="warn-icon">⚠️</span>
+    <div class="warn-title">שים לב. פריטים אלה לא סומנו:</div>
+    <div class="warn-list" id="warnList"></div>
+    <button class="btn-warn" onclick="finishReturnPending()">החזר לבנק הפריטים</button>
+    <button class="btn-secondary" onclick="finishKeepPending()">השאר ברשימה</button>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="overlay" id="shareOverlay" style="display:none" onclick="closeShareModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeShareModal()">✕</button>
+    <div class="modal-title">🔗 שיתוף הרשימה</div>
+    <div class="share-code-box">
+      <div class="share-code-label">קוד הרשימה שלך</div>
+      <span class="share-code-value" id="shareCodeDisplay"></span>
+      <div class="share-code-hint">שלח קוד זה לבני המשפחה.<br>הם יכנסו לאפליקציה ויכתבו את הקוד להצטרפות.</div>
+    </div>
+    <button class="btn-copy" onclick="copyCode()">📋 העתק קוד</button>
+    <button class="btn-secondary" onclick="closeShareModal()">סגור</button>
+    <button class="btn-leave" onclick="leaveList()">🚪 עזוב רשימה זו</button>
+  </div>
+</div>
+
+<!-- CAT MODAL -->
+<div class="overlay" id="catOverlay" style="display:none" onclick="closeCatModal()">
+  <div class="modal cat-modal" onclick="event.stopPropagation()" style="max-height:92vh; display:flex; flex-direction:column;">
+    <button class="modal-close" onclick="closeCatModal()">✕</button>
+    <div class="modal-title">📂 ניהול קטגוריות</div>
+    <div class="sort-row">
+      <button class="btn-sort active"   id="sortAlphaBtn" onclick="setCatSort('alpha')">א-ב</button>
+      <button class="btn-sort inactive" id="sortCatBtn"   onclick="setCatSort('cat')">קטגוריות</button>
+    </div>
+    <div class="cats-section">
+      <div class="cats-sec-title"><span>קטגוריות</span></div>
+      <div class="cats-tags" id="catTagsList"></div>
+      <div class="new-cat-row">
+        <input class="form-input" id="newCatInput" placeholder="קטגוריה חדשה..." onkeydown="if(event.key==='Enter') addCategory()" style="font-size:13px; padding:7px 10px;">
+        <button class="btn-add-cat" onclick="addCategory()">+ הוסף</button>
+      </div>
+    </div>
+    <div class="cat-divider">
+      <div class="cat-divider-line"></div>
+      <div class="cat-divider-label">כל הפריטים</div>
+      <div class="cat-divider-line"></div>
+    </div>
+    <div class="items-section">
+      <div class="items-list" id="catItemsList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCkk2r6GYDmF9iqBmwqBXJ0eYu_onrkWvc",
+  authDomain: "shopping-list-9794c.firebaseapp.com",
+  projectId: "shopping-list-9794c",
+  storageBucket: "shopping-list-9794c.firebasestorage.app",
+  messagingSenderId: "230261304766",
+  appId: "1:230261304766:web:e4189d6b599f01b1209def",
+  measurementId: "G-DGMWZ5H920"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+// ═══════════════════════════════════════════════════
+// AUTO-CATEGORY DICTIONARY
+// ═══════════════════════════════════════════════════
+const CAT_RULES = [
+  { cat:"ירקות ופירות", words:["עגבניה","עגבניות","מלפפון","מלפפונים","חסה","גזר","גזרים","בצל","בצלים","שום","פלפל","פלפלים","תפוח אדמה","תפוחי אדמה","קישוא","קישואים","חציל","חצילים","ברוקולי","כרובית","כרוב","תרד","סלרי","אבוקדו","אבוקדואים","תירס","אספרגוס","פטריות","פטריה","לימון","לימונים","ליים","תפוח","תפוחים","בננה","בננות","ענבים","תפוז","תפוזים","מנדרינה","מנדרינות","אפרסמון","אגס","אגסים","שזיף","שזיפים","אפרסק","אפרסקים","דובדבן","דובדבנים","מנגו","פפאיה","אבטיח","מלון","קלמנטינה","גויאבה","פסיפלורה","רימון","רימונים","תאנה","תאנים","תות","תותים","אוכמנית","פטל","כרישה","כרישות","זוקיני","ארטישוק","עירית","פטרוזיליה","כוסברה","שמיר","בזיליקום","נענע","טימין","רוזמרין","ג׳ינג׳ר","כורכום","סלק","בטטה","בטטות","ירקות","פירות","סלט","ירק","פרי"] },
+  { cat:"מוצרי חלב", words:["חלב","שמנת","גבינה","גבינות","יוגורט","קוטג'","לבן","קפיר","גבינה צהובה","גבינה לבנה","מוצרלה","פרמזן","בולגרית","פטה","ריקוטה","קממבר","ברי","גאודה","צ׳דר","אמנטל","עמק","חלב עיזים","חלב כבשים","שמנת חמוצה","שמנת מתוקה","שמנת להקצפה","חמאה","מרגרינה","ממרח","מסקרפונה","לאבנה","שקדייה","פרוביון","מנצ׳גו","חלב סויה","שוקו","מוצרי חלב","קצפת","אשל","גבינת שמנת","חלב דל שומן","חלב מלא"] },
+  { cat:"בשר ודגים", words:["עוף","עופות","חזה עוף","שוק עוף","כנפיים","כנף","פרגית","שניצל","קציצה","קציצות","בשר","בשר בקר","בשר טחון","אנטריקוט","פילה","סטייק","צלעות","כבש","טלה","הודו","ברווז","אווז","כבד","לב","כליות","נקניק","נקניקיות","המבורגר","שווארמה","קבב","דג","דגים","סלמון","טונה","פורל","דניס","לברק","אמנון","קרפיון","בקלה","הרינג","מקרל","סרדינים","שרימפס","לובסטר","קלמרי","קרב","סושי","גפילטע","ביצים","ביצה","ביצי חופש","ביצה אורגנית","בשר טלה","אסאדו","שפונדרה","כתף","סינטה","פיקניה"] },
+  { cat:"לחם ומאפים", words:["לחם","לחמים","פיתה","פיתות","בגט","לחמנייה","לחמניות","חלה","לחם שיפון","לחם מלא","לחם לבן","לחם שחור","טוסט","קרואסון","מאפה","מאפים","בורקס","פשטידה","קיש","עוגיות","עוגה","עוגת שוקולד","גבעות","אקלר","רולדה","בראוניז","מאפין","קאפקייק","פנקייק","וופל","פיצה","לחם פיתה","לחם דגנים","לחם כוסמין","טורטייה","לאפה","לחוח","מצה","כרכרת","רוגלך","הרוגלה","סינבון","קניש","עלי בצק","בצק עלים","קמח","סוכר","מלח","פלפל שחור","פפריקה","כמון","אורז","פסטה","ספגטי","מקרוני","פנה","פוזילי","אטריות","קוסקוס","בורגול","קינואה","עדשים","שעועית","חומוס יבש","אפונה","סויה","גרגרי חומוס","אורז מלא","אורז בסמטי","גריסים"] },
+  { cat:"שתייה", words:["מים","מים מינרלים","מים מוגזים","סודה","קולה","פפסי","ספרייט","פאנטה","רד בול","מיץ","מיצים","מיץ תפוחים","מיץ ענבים","מיץ גזר","מיץ תפוזים","תה","קפה","שוקולד חם","קפה נמס","אספרסו","קפוצ׳ינו","לאטה","קפה שחור","בירה","יין","יין אדום","יין לבן","יין רוזה","וודקה","ויסקי","רום","קוניאק","שמפניה","קוקטייל","ליקר","עראק","בירה שחורה","בירה לבנה","סיידר","קומבוצ׳ה","אנרגטיק","שייק","סמות׳י","לימונדה","גזוז","מי ברז","מי שתייה"] },
+  { cat:"חטיפים וממתקים", words:["שוקולד","שוקולד חלב","שוקולד מריר","שוקולד לבן","קיטקט","סניקרס","מארס","טוויקס","בונבון","סוכריות","מסטיק","ארטיק","גלידה","גלידת וניל","שוקו בר","ופל","בר","במבה","ביסלי","אחלה","תפוצ׳יפס","פרינגלס","דוריטוס","פופקורן","קרקרים","חטיף","אגוזים","בוטנים","שקדים","קשיו","פיסטוק","מלאח","גרנולה","דגני בוקר","קורנפלקס","חטיפי בריאות","חטיף אנרגיה","ממתק","ממתקים","לחמנייה מתוקה","קרמל","טופי","מרמלדה","ג׳לי","הלבה","טחינה מתוקה","ריבה","שוקולד עם אגוזים","פצפוצים"] },
+  { cat:"ניקיון ותכשירים", words:["סבון","שמפו","מרכך","מרכך שיער","קרם","תחליב","לוסיון","דאודורנט","בושם","ספריי","משחת שיניים","מברשת שיניים","חוט דנטלי","שטיפת פה","תחליב גוף","קרם לחות","נייר טואלט","מגבונים","מגבות נייר","ממחטות","חיתולים","מוצצים","פודרה","שמן תינוק","אפטר שייב","סכין גילוח","קרם גילוח","קוטי","לק","מסיר לק","קרם עיניים","מסקרה","אייליינר","פנדה","שפתון","קרם הגנה","קרם לילה","סרום","מסיר איפור","כלי ניקיון","אקונומיקה","אבקת כביסה","מרכך כביסה","נוזל כלים","ספוג","מטאטא","מגב","שואב אבק","שקיות אשפה","ניחוח לבית","ספריי לניקוי","ג׳ל רחצה"] },
+  { cat:"קפואים", words:["קפוא","קפואים","ירקות קפואים","פירות קפואים","דגים קפואים","עוף קפוא","בשר קפוא","פיצה קפואה","שניצל קפוא","נאגטס","פופקורן קפוא","ברוקולי קפוא","אפונה קפואה","תירס קפוא","שעועית קפואה","פרייז","צ׳יפס קפוא","גלידה","ארטיק","שייקים קפואים","בצק קפוא","רביולי קפוא","בורקס קפוא","קרואסון קפוא","לחמניות קפואות","פלאפל קפוא"] },
+  { cat:"שימורים", words:["שימורים","שימור","טונה שימורים","סרדינים שימורים","עגבניות שימורים","רסק עגבניות","שעועית שימורים","חומוס שימורים","תירס שימורים","מלפפון חמוץ","זיתים","זית","אנשובי","פטה שימורים","ריבה","דבש","ממרח","ממרח שוקולד","נוטלה","חמאת בוטנים","טחינה","חרדל","קטשופ","מיונז","רוטב","רוטב עגבניות","רוטב סויה","חומץ","שמן","שמן זית","שמן קוקוס","שמן שומשום","מרק מוכן","פסטה מוכנה","שעועית לבנה","עדשים","חמוצים","כבוש","קוקוס שימורים"] }
+];
+const WORD_TO_CAT = {};
+CAT_RULES.forEach(r => r.words.forEach(w => { WORD_TO_CAT[w.trim().toLowerCase()] = r.cat; }));
+
+function guessCategory(name) {
+  if (!name) return null;
+  const lower = name.trim().toLowerCase();
+  if (WORD_TO_CAT[lower]) return WORD_TO_CAT[lower];
+  const sorted = Object.keys(WORD_TO_CAT).sort((a,b) => b.length - a.length);
+  for (const kw of sorted) { if (lower.includes(kw) || kw.includes(lower)) return WORD_TO_CAT[kw]; }
+  if (lower.length >= 3) { const root = lower.substring(0,3); for (const kw of sorted) { if (kw.startsWith(root)) return WORD_TO_CAT[kw]; } }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+const DEFAULT_CATS = ["כללי","ירקות ופירות","מוצרי חלב","בשר ודגים","לחם ומאפים","שתייה","חטיפים וממתקים","ניקיון ותכשירים","קפואים","שימורים"];
+let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst" };
+
+// Firebase state
+let currentListId  = null;
+let firestoreUnsub = null;
+let saveTimer      = null;
+let lastSavedHash  = "";
+let isSyncing      = false;
+
+// ── UNDO ──────────────────────────────────────────
+const undoStack = [];
+function pushUndo() {
+  undoStack.push(JSON.stringify({ bank:state.bank, cart:state.cart, categories:state.categories }));
+  if (undoStack.length > 30) undoStack.shift();
+  document.getElementById("undoBtn").disabled = false;
+}
+function undo() {
+  if (!undoStack.length) return;
+  const prev = JSON.parse(undoStack.pop());
+  state.bank = prev.bank; state.cart = prev.cart; state.categories = prev.categories;
+  save(); renderBank(); renderCart(); updateHeader();
+  if (!undoStack.length) document.getElementById("undoBtn").disabled = true;
+  showToast("הפעולה בוטלה");
+}
+
+// ── PERSISTENCE ───────────────────────────────────
+function stateHash() {
+  return JSON.stringify({ bank:state.bank, cart:state.cart, categories:state.categories,
+    bankSort:state.bankSort, catSort:state.catSort, viewOrder:state.viewOrder });
+}
+
+function save() {
+  // Local cache
+  try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: currentListId })); } catch(e){}
+  // Debounced Firestore write
+  clearTimeout(saveTimer);
+  setSyncDot("syncing");
+  saveTimer = setTimeout(saveToFirestore, 700);
+}
+
+async function saveToFirestore() {
+  if (!currentListId) return;
+  const data = {
+    bank: state.bank, cart: state.cart, categories: state.categories,
+    bankSort: state.bankSort, catSort: state.catSort, viewOrder: state.viewOrder,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  const hash = stateHash();
+  lastSavedHash = hash;
+  try {
+    await db.collection("lists").doc(currentListId).set(data, { merge: true });
+    setSyncDot("connected");
+  } catch(e) {
+    console.error("Save error", e);
+    setSyncDot("error");
+  }
+}
+
+function applyRemoteData(data) {
+  const incoming = JSON.stringify({
+    bank: data.bank, cart: data.cart, categories: data.categories,
+    bankSort: data.bankSort, catSort: data.catSort, viewOrder: data.viewOrder
+  });
+  if (incoming === lastSavedHash) return; // our own write, skip
+  isSyncing = true;
+  if (data.bank)       state.bank       = data.bank;
+  if (data.cart)       state.cart       = data.cart;
+  if (data.categories) state.categories = data.categories;
+  if (data.bankSort)   state.bankSort   = data.bankSort;
+  if (data.catSort)    state.catSort    = data.catSort;
+  if (data.viewOrder)  state.viewOrder  = data.viewOrder;
+  lastSavedHash = incoming;
+  try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: currentListId })); } catch(e){}
+  renderBank(); renderCart(); updateHeader(); applyViewOrder(); syncBankSortButtons();
+  isSyncing = false;
+  setSyncDot("connected");
+}
+
+// ── SYNC DOT ──────────────────────────────────────
+function setSyncDot(status) {
+  const dot = document.getElementById("syncDot");
+  dot.className = "sync-dot " + status;
+  dot.title = status === "connected" ? "מחובר" : status === "syncing" ? "מסנכרן..." : "שגיאת חיבור";
+}
+
+// ── LIST ID helper ────────────────────────────────
+function generateCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
+  let code = "";
+  for (let i=0; i<6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+function uid() { return Math.random().toString(36).substr(2,9); }
+
+// ═══════════════════════════════════════════════════
+// LOBBY — CREATE / JOIN
+// ═══════════════════════════════════════════════════
+function setLobbyStatus(msg, isError=false) {
+  const el = document.getElementById("lobbyStatus");
+  el.textContent = msg;
+  el.className = "lobby-status" + (isError ? " error" : "");
+}
+
+async function createList() {
+  setLobbyStatus("יוצר רשימה...");
+  try {
+    await ensureAuth();
+    const code = generateCode();
+    const data = {
+      bank: state.bank, cart: state.cart, categories: state.categories,
+      bankSort: state.bankSort, catSort: state.catSort, viewOrder: state.viewOrder,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection("lists").doc(code).set(data);
+    enterList(code);
+  } catch(e) {
+    console.error(e);
+    setLobbyStatus("שגיאה ביצירת הרשימה. בדוק חיבור לאינטרנט.", true);
+  }
+}
+
+async function joinList() {
+  const code = document.getElementById("joinCodeInput").value.trim().toUpperCase();
+  if (code.length !== 6) { setLobbyStatus("יש להזין קוד בן 6 תווים", true); return; }
+  setLobbyStatus("מחפש רשימה...");
+  try {
+    await ensureAuth();
+    const snap = await db.collection("lists").doc(code).get();
+    if (!snap.exists) { setLobbyStatus("קוד לא נמצא. בדוק שוב.", true); return; }
+    enterList(code);
+  } catch(e) {
+    console.error(e);
+    setLobbyStatus("שגיאת חיבור. נסה שוב.", true);
+  }
+}
+
+function enterList(code) {
+  currentListId = code;
+  try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: code })); } catch(e){}
+  document.getElementById("lobby").style.display = "none";
+  document.getElementById("appHeader").style.display = "flex";
+  document.getElementById("appMain").style.display = "block";
+  document.getElementById("shareCodeDisplay").textContent = code;
+  syncBankSortButtons();
+  applyViewOrder();
+  subscribeToList(code);
+}
+
+function leaveList() {
+  if (firestoreUnsub) { firestoreUnsub(); firestoreUnsub = null; }
+  currentListId = null;
+  try { localStorage.removeItem("shoppingApp_v5"); } catch(e){}
+  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst" };
+  undoStack.length = 0;
+  document.getElementById("undoBtn").disabled = true;
+  document.getElementById("shareOverlay").style.display = "none";
+  document.getElementById("appHeader").style.display = "none";
+  document.getElementById("appMain").style.display = "none";
+  document.getElementById("joinCodeInput").value = "";
+  document.getElementById("lobby").style.display = "flex";
+  setLobbyStatus("");
+}
+
+// ── FIRESTORE SUBSCRIPTION ────────────────────────
+function subscribeToList(code) {
+  if (firestoreUnsub) firestoreUnsub();
+  setSyncDot("syncing");
+  firestoreUnsub = db.collection("lists").doc(code).onSnapshot(
+    snap => {
+      if (!snap.exists) { showToast("הרשימה נמחקה"); leaveList(); return; }
+      applyRemoteData(snap.data());
+    },
+    err => { console.error(err); setSyncDot("error"); showToast("שגיאת חיבור"); }
+  );
+}
+
+// ── AUTH ──────────────────────────────────────────
+function ensureAuth() {
+  return new Promise((resolve, reject) => {
+    if (auth.currentUser) { resolve(); return; }
+    auth.signInAnonymously().then(resolve).catch(reject);
+  });
+}
+
+// ── SHARE MODAL ───────────────────────────────────
+function openShareModal()  { document.getElementById("shareOverlay").style.display = "flex"; }
+function closeShareModal() { document.getElementById("shareOverlay").style.display = "none"; }
+function copyCode() {
+  const code = currentListId || "";
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => showToast("✅ הקוד הועתק!"));
+  } else {
+    showToast("הקוד: " + code);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST & HEADER
+// ═══════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = "none", 2400);
+}
+function updateHeader() {
+  const code = currentListId ? ` · קוד: ${currentListId}` : "";
+  document.getElementById("headerSub").textContent = `${state.bank.length} בבנק · ${state.cart.length} ברשימה${code}`;
+}
+
+// ═══════════════════════════════════════════════════
+// AUTOCOMPLETE
+// ═══════════════════════════════════════════════════
+function getSuggestionPool() {
+  return [...new Set([...state.bank.map(i=>i.name), ...Object.keys(WORD_TO_CAT)])];
+}
+let acSelectedIdx=-1, acMatches=[], acCurrentSuggestion="";
+
+function onAddInput(val) { previewCategory(val); updateAutocomplete(val); }
+
+function updateAutocomplete(val) {
+  const inp = document.getElementById("addInput");
+  const suggestion = document.getElementById("acSuggestion");
+  acSelectedIdx = -1; acCurrentSuggestion = ""; suggestion.innerHTML = "";
+  if (!val.trim()) { closeAcDropdown(); acMatches=[]; return; }
+  const lower = val.trim().toLowerCase();
+  acMatches = getSuggestionPool().filter(w => w.toLowerCase().startsWith(lower) && w.toLowerCase() !== lower).slice(0,8);
+  if (acMatches.length > 0) {
+    acCurrentSuggestion = acMatches[0];
+    const hint = acMatches[0].slice(val.length);
+    suggestion.innerHTML = `<span class="ac-typed">${escHtml(val)}</span><span class="ac-hint">${escHtml(hint)}</span>`;
+  }
+  let dd = document.getElementById("acDropdown");
+  if (acMatches.length === 0) { if (dd) dd.remove(); return; }
+  if (!dd) { dd = document.createElement("div"); dd.className="ac-dropdown"; dd.id="acDropdown"; inp.closest(".autocomplete-wrap").appendChild(dd); }
+  dd.innerHTML = "";
+  acMatches.forEach((m, idx) => {
+    const item = document.createElement("div"); item.className="ac-item";
+    item.innerHTML = `<strong>${escHtml(m.slice(0,val.length))}</strong>${escHtml(m.slice(val.length))}`;
+    item.onpointerdown = e => { e.preventDefault(); acceptSuggestion(m); };
+    dd.appendChild(item);
+  });
+}
+
+function onAddKeyDown(e) {
+  if (e.key==="ArrowDown") { e.preventDefault(); acSelectedIdx=Math.min(acSelectedIdx+1,acMatches.length-1); highlightAcItem(); return; }
+  if (e.key==="ArrowUp")   { e.preventDefault(); acSelectedIdx=Math.max(acSelectedIdx-1,-1); highlightAcItem(); return; }
+  if ((e.key==="Tab"||e.key==="ArrowLeft") && acCurrentSuggestion) { e.preventDefault(); acceptSuggestion(acSelectedIdx>=0?acMatches[acSelectedIdx]:acCurrentSuggestion); return; }
+  if (e.key==="Enter") {
+    if (acSelectedIdx>=0&&acMatches[acSelectedIdx]) { e.preventDefault(); acceptSuggestion(acMatches[acSelectedIdx]); }
+    else if (acCurrentSuggestion&&document.getElementById("addInput").value.trim().length>=2) { e.preventDefault(); acceptSuggestion(acCurrentSuggestion); addToBank(); }
+    else addToBank();
+    return;
+  }
+  if (e.key==="Escape") { closeAcDropdown(); }
+}
+function highlightAcItem() { document.querySelectorAll(".ac-item").forEach((el,i)=>el.classList.toggle("ac-selected",i===acSelectedIdx)); }
+function acceptSuggestion(val) {
+  const inp = document.getElementById("addInput"); inp.value=val;
+  previewCategory(val); closeAcDropdown(); document.getElementById("acSuggestion").innerHTML=""; acCurrentSuggestion=""; inp.focus();
+}
+function closeAcDropdown() { const dd=document.getElementById("acDropdown"); if(dd)dd.remove(); acMatches=[]; acSelectedIdx=-1; }
+document.addEventListener("pointerdown", e => { if (!e.target.closest(".autocomplete-wrap")) closeAcDropdown(); });
+function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function previewCategory(val) {
+  const preview = document.getElementById("catPreview");
+  if (!val.trim()) { preview.textContent=""; return; }
+  const cat = guessCategory(val);
+  if (cat && cat!=="כללי") { preview.textContent="📂 "+cat; }
+  else { preview.textContent=""; }
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER BANK
+// ═══════════════════════════════════════════════════
+function syncBankSortButtons() {
+  const m = state.bankSort || "cat";
+  ["none","alpha","cat"].forEach(s => {
+    const btn = document.getElementById("bankSort"+s.charAt(0).toUpperCase()+s.slice(1)+"Btn");
+    if (btn) btn.className = "btn-sort " + (m===s?"active":"inactive");
+  });
+}
+function setBankSort(mode) {
+  state.bankSort = mode;
+  syncBankSortButtons();
+  save(); renderBank();
+}
+function confirmAutoClassified(id) {
+  const idx = state.bank.findIndex(i=>i.id===id);
+  if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+}
+
+function renderBank() {
+  const grid = document.getElementById("bankGrid");
+  const searchVal = (document.getElementById("bankSearchInput")?.value||"").trim().toLowerCase();
+  let items = state.bank.slice();
+  if (searchVal) items = items.filter(i=>i.name.toLowerCase().includes(searchVal));
+  document.getElementById("bankCount").textContent = `${state.bank.length} פריטים`;
+  if (!items.length) {
+    grid.innerHTML = state.bank.length ? '<div class="empty">לא נמצאו תוצאות<span class="empty-icon">🔍</span></div>' : '<div class="empty">בנק הפריטים ריק<span class="empty-icon">📦</span></div>';
+    return;
+  }
+  if (state.bankSort==="alpha") items.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+  else if (state.bankSort==="cat") items.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
+
+  grid.innerHTML=""; let lastCat=null;
+  items.forEach(item => {
+    if (state.bankSort==="cat") {
+      const cat = item.category||"כללי";
+      if (cat!==lastCat) { lastCat=cat; const hdr=document.createElement("div"); hdr.className="bank-cat-header"; hdr.textContent=cat; grid.appendChild(hdr); }
+    }
+    const el = document.createElement("div"); el.className="bank-item";
+    const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
+    if (item.autoClassified) {
+      const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="❓";
+      badge.title=`סווג אוטומטית: ${item.category} — לחץ לאישור`;
+      badge.onpointerdown=e=>{ e.stopPropagation(); };
+      badge.onpointerup=e=>{ e.stopPropagation(); };
+      badge.onclick=e=>{ e.stopPropagation(); confirmAutoClassified(item.id); showToast("✅ קטגוריה אושרה"); };
+      el.appendChild(badge);
+    } else if (item.category && item.category!=="כללי" && state.bankSort!=="cat") {
+      const catLabel=document.createElement("span"); catLabel.className="bank-item-cat"; catLabel.textContent=item.category; el.appendChild(catLabel);
+    }
+    el.addEventListener("pointerdown",e=>{ e.stopPropagation(); startLong(e,item); });
+    el.addEventListener("pointerup",  e=>{ e.stopPropagation(); endLong(item); });
+    el.addEventListener("pointerleave",()=>cancelLong());
+    el.addEventListener("pointercancel",()=>cancelLong());
+    grid.appendChild(el);
+  });
+  updateHeader();
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER CART
+// ═══════════════════════════════════════════════════
+function renderCart() {
+  const list = document.getElementById("cartList");
+  document.getElementById("cartCount").textContent = `${state.cart.length} פריטים`;
+  document.getElementById("finishBtn").style.display = state.cart.length?"block":"none";
+  if (!state.cart.length) { list.innerHTML='<div class="empty">לחץ על פריט בבנק כדי להוסיף לרשימה<span class="empty-icon">🛒</span></div>'; return; }
+  const notDone=state.cart.filter(i=>i.status!=="done"), done=state.cart.filter(i=>i.status==="done");
+  const groups={};
+  notDone.forEach(item=>{ const cat=item.category||"כללי"; if(!groups[cat])groups[cat]=[]; groups[cat].push(item); });
+  list.innerHTML="";
+  Object.entries(groups).forEach(([cat,items])=>{ const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent=cat; list.appendChild(lbl); items.forEach(item=>list.appendChild(buildCartItem(item))); });
+  if (done.length) { const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent="✓ נכנס לעגלה"; list.appendChild(lbl); done.forEach(item=>list.appendChild(buildCartItem(item))); }
+  updateHeader();
+}
+
+function buildCartItem(item) {
+  const wrap=document.createElement("div"); wrap.className="cart-item"+(item.status==="done"?" done":item.status==="cancel"?" cancel":"");
+  const row=document.createElement("div"); row.className="cart-row";
+  const name=document.createElement("span"); name.className="cart-name"; name.textContent=item.name;
+  const noteDisplay=document.createElement("span"); noteDisplay.className="note-text-display"; noteDisplay.style.display=item.note?"inline-block":"none"; noteDisplay.textContent=item.note||"";
+  const noteToggle=document.createElement("button"); noteToggle.className="note-toggle"; noteToggle.textContent="✏️";
+  const noteWrap=document.createElement("div"); noteWrap.className="cart-note-wrap";
+  const noteInput=document.createElement("input"); noteInput.className="cart-note-input"; noteInput.placeholder="הערה / כמות..."; noteInput.type="text"; noteInput.value=item.note||"";
+  function openNoteEdit(){ noteDisplay.style.display="none"; noteWrap.classList.add("open"); noteInput.focus(); noteInput.select(); }
+  function closeNoteEdit(){ const val=noteInput.value.trim(); noteWrap.classList.remove("open"); if(val){noteDisplay.textContent=val;noteDisplay.style.display="inline-block";}else{noteDisplay.style.display="none";} }
+  noteToggle.onclick=openNoteEdit; noteDisplay.onclick=openNoteEdit;
+  noteInput.oninput=e=>{ const idx=state.cart.findIndex(i=>i.id===item.id); if(idx!==-1){state.cart[idx].note=e.target.value;save();} };
+  noteInput.onblur=closeNoteEdit;
+  noteInput.onkeydown=e=>{ if(e.key==="Enter"||e.key==="Escape")noteInput.blur(); };
+  const btnCheck=document.createElement("button"); btnCheck.className="btn-icon btn-check"+(item.status==="done"?" active":""); btnCheck.textContent="✓"; btnCheck.onclick=()=>setCartStatus(item.id,"done");
+  const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
+  const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
+  row.appendChild(name); row.appendChild(noteDisplay); row.appendChild(noteToggle); row.appendChild(btnCheck); row.appendChild(btnX); row.appendChild(btnMinus);
+  noteWrap.appendChild(noteInput); wrap.appendChild(row); wrap.appendChild(noteWrap);
+  return wrap;
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════
+function addToBank() {
+  const inp=document.getElementById("addInput"); const name=inp.value.trim(); if(!name)return;
+  if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט זה כבר קיים");return;}
+  pushUndo();
+  const guessed=guessCategory(name); const cat=guessed||"כללי";
+  state.bank.push({id:uid(),name,category:cat,autoClassified:true});
+  inp.value=""; document.getElementById("acSuggestion").innerHTML=""; closeAcDropdown(); document.getElementById("catPreview").textContent="";
+  save(); renderBank();
+}
+function moveToCart(item) {
+  pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); state.cart.push({...item,note:"",status:null});
+  save(); renderBank(); renderCart();
+}
+function removeFromCart(id) {
+  pushUndo(); const item=state.cart.find(i=>i.id===id); if(!item)return;
+  state.cart=state.cart.filter(i=>i.id!==id); state.bank.push({id:item.id,name:item.name,category:item.category});
+  save(); renderBank(); renderCart();
+}
+function setCartStatus(id,status) {
+  pushUndo(); const idx=state.cart.findIndex(i=>i.id===id); if(idx===-1)return;
+  state.cart[idx].status=state.cart[idx].status===status?null:status;
+  save(); renderCart();
+}
+
+// ── LONG PRESS ────────────────────────────────────
+let longTimer, longFired=false, longTargetId=null;
+function startLong(e,item){ longFired=false; longTargetId=item.id; clearTimeout(longTimer); longTimer=setTimeout(()=>{longFired=true;openCtxMenu(e,item);},500); }
+function endLong(item){ clearTimeout(longTimer); if(longTargetId!==item.id){longFired=false;longTargetId=null;return;} if(!longFired)moveToCart(item); longFired=false; longTargetId=null; }
+function cancelLong(){ clearTimeout(longTimer); longFired=false; longTargetId=null; }
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+// ── CTX MENU ──────────────────────────────────────
+let ctxTarget=null;
+function openCtxMenu(e,item){
+  ctxTarget=item; document.getElementById("ctxName").textContent=item.name;
+  const rect=(e.currentTarget||e.target).getBoundingClientRect();
+  let top=rect.bottom+5, right=window.innerWidth-rect.right;
+  if(top+105>window.innerHeight) top=rect.top-108;
+  const m=document.getElementById("ctxMenu"); m.style.top=top+"px"; m.style.right=right+"px"; m.style.left="auto"; m.style.display="block";
+  setTimeout(()=>document.addEventListener("click",closeCtx,{once:true}),0);
+}
+function closeCtx(){ document.getElementById("ctxMenu").style.display="none"; ctxTarget=null; }
+function ctxEdit()  { if(ctxTarget)openEditModal(ctxTarget); closeCtx(); }
+function ctxDelete(){ if(ctxTarget){pushUndo();state.bank=state.bank.filter(i=>i.id!==ctxTarget.id);save();renderBank();} closeCtx(); }
+
+// ── EDIT MODAL ────────────────────────────────────
+let editTarget=null;
+function openEditModal(item){ editTarget=item; document.getElementById("editName").value=item.name; document.getElementById("editCat").innerHTML=state.categories.map(c=>`<option value="${c}" ${c===item.category?"selected":""}>${c}</option>`).join(""); document.getElementById("editOverlay").style.display="flex"; setTimeout(()=>document.getElementById("editName").focus(),80); }
+function closeEditModal(){ document.getElementById("editOverlay").style.display="none"; editTarget=null; }
+function saveEdit(){
+  if(!editTarget)return; const name=document.getElementById("editName").value.trim(); const cat=document.getElementById("editCat").value; if(!name)return;
+  pushUndo(); const idx=state.bank.findIndex(i=>i.id===editTarget.id);
+  if(idx!==-1){state.bank[idx].name=name;state.bank[idx].category=cat;state.bank[idx].autoClassified=false;}
+  save(); renderBank(); closeEditModal();
+}
+
+// ── FINISH ────────────────────────────────────────
+let finishPending=[];
+function handleFinish(){
+  const pending=state.cart.filter(i=>i.status===null);
+  if(pending.length){finishPending=pending;document.getElementById("warnList").innerHTML=pending.map(i=>`<div class="warn-item">${i.name}</div>`).join("");document.getElementById("finishOverlay").style.display="flex";}
+  else doFinish([]);
+}
+function closeFinishModal(){ document.getElementById("finishOverlay").style.display="none"; finishPending=[]; }
+function finishReturnPending(){ doFinish(finishPending); closeFinishModal(); }
+function finishKeepPending(){
+  pushUndo(); const done=state.cart.filter(i=>i.status==="done"); const keep=state.cart.filter(i=>i.status!=="done");
+  done.forEach(i=>state.bank.push({id:i.id,name:i.name,category:i.category})); state.cart=keep;
+  save(); renderBank(); renderCart(); closeFinishModal(); showToast("הקניות הסתיימו!");
+}
+function doFinish(pendingToReturn){
+  pushUndo(); const done=state.cart.filter(i=>i.status==="done"); const cancel=state.cart.filter(i=>i.status==="cancel");
+  [...done,...pendingToReturn].forEach(i=>state.bank.push({id:i.id,name:i.name,category:i.category}));
+  state.cart=cancel; save(); renderBank(); renderCart(); showToast("הקניות הסתיימו!");
+}
+
+// ── CAT MODAL ─────────────────────────────────────
+let editingCatTag=null, catOverlayOpen=false;
+function openCatModal() { editingCatTag=null; catOverlayOpen=true; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
+function closeCatModal(){ catOverlayOpen=false; document.getElementById("catOverlay").style.display="none"; editingCatTag=null; }
+function setCatSort(mode){
+  state.catSort=mode;
+  document.getElementById("sortAlphaBtn").className="btn-sort "+(mode==="alpha"?"active":"inactive");
+  document.getElementById("sortCatBtn").className  ="btn-sort "+(mode==="cat"  ?"active":"inactive");
+  renderCatItems();
+}
+function renderCatModal(){ renderCatTags(); renderCatItems(); }
+
+function renderCatTags(){
+  const el=document.getElementById("catTagsList"); el.innerHTML="";
+  state.categories.forEach(cat=>{
+    const div=document.createElement("div"); div.className="cat-tag";
+    if(editingCatTag===cat){
+      const inp=document.createElement("input"); inp.className="cat-tag-edit-input"; inp.value=cat;
+      inp.onblur=()=>saveCatTagName(cat,inp.value);
+      inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){editingCatTag=null;renderCatTags();}};
+      div.appendChild(inp); setTimeout(()=>inp.focus(),30);
+    } else { const span=document.createElement("span"); span.className="cat-tag-name"; span.textContent=cat; div.appendChild(span); }
+    const btnE=document.createElement("button"); btnE.className="tag-btn"; btnE.textContent="✏️"; btnE.onclick=()=>{editingCatTag=cat;renderCatTags();}; div.appendChild(btnE);
+    if(cat!=="כללי"){
+      const btnD=document.createElement("button"); btnD.className="tag-btn tag-btn-del"; btnD.textContent="✕";
+      btnD.onclick=()=>{pushUndo();state.categories=state.categories.filter(c=>c!==cat);state.bank=state.bank.map(i=>i.category===cat?{...i,category:"כללי"}:i);state.cart=state.cart.map(i=>i.category===cat?{...i,category:"כללי"}:i);save();renderCatModal();renderBank();renderCart();};
+      div.appendChild(btnD);
+    }
+    el.appendChild(div);
+  });
+}
+function saveCatTagName(oldCat,newName){
+  editingCatTag=null; const t=newName.trim();
+  if(!t||(t!==oldCat&&state.categories.includes(t))){renderCatTags();return;}
+  pushUndo(); state.categories=state.categories.map(c=>c===oldCat?t:c);
+  state.bank=state.bank.map(i=>i.category===oldCat?{...i,category:t}:i);
+  state.cart=state.cart.map(i=>i.category===oldCat?{...i,category:t}:i);
+  save();renderCatModal();renderBank();renderCart();
+}
+function addCategory(){
+  const inp=document.getElementById("newCatInput"); const name=inp.value.trim();
+  if(!name||state.categories.includes(name)){showToast("קטגוריה זו כבר קיימת");return;}
+  pushUndo(); state.categories.push(name); inp.value=""; save(); renderCatTags();
+}
+
+function renderCatItems(){
+  const el=document.getElementById("catItemsList"); el.innerHTML="";
+  const allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
+  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+  else allItems.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
+  let lastGroupKey=null;
+  allItems.forEach(item=>{
+    const groupKey=state.catSort==="alpha"?(item.name[0]||"?"):(item.category||"כללי");
+    if(groupKey!==lastGroupKey){ lastGroupKey=groupKey; const hdr=document.createElement("div"); hdr.className="cat-group-header"; hdr.textContent=groupKey; el.appendChild(hdr); }
+    const row=document.createElement("div"); row.className="cat-item-row"+(item.autoClassified?" unconfirmed":"");
+    const namePart=document.createElement("span"); namePart.className="cat-item-name"; namePart.textContent=item.name;
+    if(item._src==="bank"){namePart.style.cursor="text";namePart.onclick=()=>startEditCatItemName(item,row,namePart,sel);}
+    row.appendChild(namePart);
+    if(item.autoClassified&&item._src==="bank"){
+      const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="❓"; badge.title="סווג אוטומטית — לחץ לאישור";
+      badge.onclick=()=>{ confirmAutoClassified(item.id); row.classList.remove("unconfirmed"); badge.remove(); showToast("✅ קטגוריה אושרה"); };
+      row.appendChild(badge);
+    }
+    const sel=document.createElement("select"); sel.className="cat-item-sel";
+    sel.innerHTML=state.categories.map(c=>`<option value="${c}" ${c===item.category?"selected":""}>${c}</option>`).join("");
+    sel.onchange=()=>{
+      pushUndo();
+      if(item._src==="bank"){const idx=state.bank.findIndex(x=>x.id===item.id);if(idx!==-1){state.bank[idx].category=sel.value;state.bank[idx].autoClassified=false;}}
+      else{const idx=state.cart.findIndex(x=>x.id===item.id);if(idx!==-1)state.cart[idx].category=sel.value;}
+      item.autoClassified=false; row.classList.remove("unconfirmed"); const b=row.querySelector(".cat-item-badge"); if(b)b.remove();
+      item.category=sel.value; save(); renderBank(); renderCart();
+      if(state.catSort==="cat")renderCatItems();
+    };
+    row.appendChild(sel); el.appendChild(row);
+  });
+}
+
+function startEditCatItemName(item,row,namePart,sel){
+  const inp=document.createElement("input"); inp.className="cat-item-name-input"; inp.value=item.name;
+  row.replaceChild(inp,namePart); inp.focus(); inp.select();
+  const finish=()=>{ const n=inp.value.trim(); if(n&&n!==item.name){pushUndo();const idx=state.bank.findIndex(x=>x.id===item.id);if(idx!==-1)state.bank[idx].name=n;item.name=n;save();renderBank();} namePart.textContent=item.name; row.replaceChild(namePart,inp); };
+  inp.onblur=finish; inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){inp.value=item.name;inp.blur();}};
+}
+
+// ── VIEW ORDER ────────────────────────────────────
+function applyViewOrder(){
+  const main=document.querySelector(".main");
+  const bank=document.getElementById("sectionBank");
+  const cart=document.getElementById("sectionCart");
+  if(!main||!bank||!cart)return;
+  if(state.viewOrder==="cartFirst"){ main.insertBefore(cart,bank); document.getElementById("viewToggleBtn").textContent="⇅ רשימה קודם"; }
+  else{ main.insertBefore(bank,cart); document.getElementById("viewToggleBtn").textContent="⇅ בנק קודם"; }
+}
+function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartFirst":"bankFirst"; save(); applyViewOrder(); }
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+(async function init() {
+  // Sign in anonymously (silent)
+  try { await auth.signInAnonymously(); } catch(e) { console.warn("Auth failed", e); }
+
+  // Check for saved list
+  try {
+    const saved = localStorage.getItem("shoppingApp_v5");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+      if (parsed.listId) {
+        // Auto-rejoin previous list
+        const snap = await db.collection("lists").doc(parsed.listId).get();
+        if (snap.exists) {
+          enterList(parsed.listId);
+          return;
+        }
+      }
+    }
+  } catch(e) { console.warn("Load error", e); }
+
+  // Show lobby
+  document.getElementById("lobby").style.display = "flex";
+})();
+</script>
+</body>
+</html>
