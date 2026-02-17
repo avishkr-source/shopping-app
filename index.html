@@ -7,8 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="קניות">
-<meta name="theme-color" content="#f0f4ff">
+<meta name="theme-color" content="#3b6fd4">
 <title>רשימת קניות</title>
+
+<!-- Favicon placeholder — will be set by JS -->
+<link rel="icon" id="favicon" type="image/png">
+<link rel="apple-touch-icon" id="appleIcon">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -1179,8 +1183,86 @@ function applyViewOrder(){
 function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartFirst":"bankFirst"; save(); applyViewOrder(); }
 
 // ═══════════════════════════════════════════════════
-// INIT
+// APP ICON GENERATION (canvas → PNG data URL)
 // ═══════════════════════════════════════════════════
+(function generateAppIcon() {
+  const sizes = [192, 512]; // for manifest
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  // Background — blue rounded square
+  const r = 100; // corner radius (relative to 512)
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.lineTo(512 - r, 0);
+  ctx.quadraticCurveTo(512, 0, 512, r);
+  ctx.lineTo(512, 512 - r);
+  ctx.quadraticCurveTo(512, 512, 512 - r, 512);
+  ctx.lineTo(r, 512);
+  ctx.quadraticCurveTo(0, 512, 0, 512 - r);
+  ctx.lineTo(0, r);
+  ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  ctx.fillStyle = "#3b6fd4";
+  ctx.fill();
+
+  // Shopping cart emoji
+  ctx.font = "320px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("🛒", 256, 280);
+
+  const iconDataUrl = canvas.toDataURL("image/png");
+
+  // Set favicon
+  const favicon = document.getElementById("favicon");
+  if (favicon) favicon.href = iconDataUrl;
+
+  // Set Apple touch icon
+  const apple = document.getElementById("appleIcon");
+  if (apple) apple.href = iconDataUrl;
+
+  // Inject PWA manifest dynamically with the canvas icon
+  const manifest = {
+    name: "רשימת קניות",
+    short_name: "קניות",
+    description: "רשימת קניות משפחתית משותפת",
+    start_url: "./",
+    display: "standalone",
+    orientation: "portrait",
+    background_color: "#f0f4ff",
+    theme_color: "#3b6fd4",
+    lang: "he",
+    dir: "rtl",
+    icons: sizes.map(s => {
+      // Create size-specific canvas
+      const c2 = document.createElement("canvas");
+      c2.width = c2.height = s;
+      const ctx2 = c2.getContext("2d");
+      const scale = s / 512;
+      const r2 = r * scale;
+      ctx2.beginPath();
+      ctx2.moveTo(r2,0); ctx2.lineTo(s-r2,0); ctx2.quadraticCurveTo(s,0,s,r2);
+      ctx2.lineTo(s,s-r2); ctx2.quadraticCurveTo(s,s,s-r2,s);
+      ctx2.lineTo(r2,s); ctx2.quadraticCurveTo(0,s,0,s-r2);
+      ctx2.lineTo(0,r2); ctx2.quadraticCurveTo(0,0,r2,0); ctx2.closePath();
+      ctx2.fillStyle="#3b6fd4"; ctx2.fill();
+      ctx2.font = `${Math.round(320*scale)}px serif`;
+      ctx2.textAlign="center"; ctx2.textBaseline="middle";
+      ctx2.fillText("🛒", s/2, s*0.547);
+      return { src: c2.toDataURL("image/png"), sizes: `${s}x${s}`, type: "image/png" };
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+  const manifestUrl = URL.createObjectURL(blob);
+  const link = document.createElement("link");
+  link.rel = "manifest"; link.href = manifestUrl;
+  document.head.appendChild(link);
+})();
+
+// ── INIT ──────────────────────────────────────────
 (async function init() {
   // Sign in anonymously (silent)
   try { await auth.signInAnonymously(); } catch(e) { console.warn("Auth failed", e); }
