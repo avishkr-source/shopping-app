@@ -522,6 +522,26 @@
   }
   .btn-notify:active { transform:scale(.96); }
   ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
+  /* BASKETS */
+  .basket-card {
+    background:var(--bg2); border:1.5px solid var(--border); border-radius:12px;
+    padding:10px 12px; margin-bottom:8px;
+  }
+  .basket-header { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+  .basket-name { font-size:14px; font-weight:700; color:var(--text); flex:1; }
+  .basket-count { font-size:11px; color:var(--text-dim); background:var(--bg3); border-radius:20px; padding:2px 8px; flex-shrink:0; }
+  .basket-preview { font-size:11px; color:var(--text-dim); margin-bottom:7px; line-height:1.5; }
+  .basket-actions { display:flex; gap:5px; }
+  .btn-basket-add { flex:1; background:var(--green); border:none; border-radius:9px; color:#fff; padding:7px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .btn-basket-add:active { transform:scale(.96); }
+  .btn-basket-edit { background:var(--bg3); border:1.5px solid var(--border); border-radius:9px; color:var(--text-mid); padding:7px 9px; font-size:12px; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .btn-basket-edit:active { background:#d0d8f0; }
+  .btn-basket-del { background:var(--red-l); border:1.5px solid #f5b8b8; border-radius:9px; color:var(--red); padding:7px 9px; font-size:12px; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .basket-item-row { display:flex; align-items:center; gap:8px; padding:5px 2px; border-bottom:1px solid var(--border); }
+  .basket-item-row:last-child { border-bottom:none; }
+  .basket-item-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--blue); flex-shrink:0; }
+  .basket-item-row label { font-size:13px; color:var(--text); flex:1; cursor:pointer; }
+  .basket-item-del { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:0 3px; }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes fadeUp  { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
   @keyframes slideIn { from{opacity:0;transform:translateY(10px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
@@ -582,6 +602,7 @@
   </div>
   <div class="header-row2">
     <button class="btn-cat" onclick="openCatModal()">📂 ניהול קטגוריות</button>
+    <button class="btn-cat" onclick="openBasketsModal()" style="background:var(--green-l);border-color:#a8e8cc;color:var(--green);">🧺 סלים</button>
     <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
     <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ הצג רשימה קודם</button>
     <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ בטל</button>
@@ -793,6 +814,43 @@
   </div>
 </div>
 
+<!-- BASKETS MODAL -->
+<div class="overlay" id="basketsOverlay" style="display:none" onclick="closeBasketsModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
+    <button class="modal-close" onclick="closeBasketsModal()">✕</button>
+    <div class="modal-title">🧺 סלי קניות</div>
+
+    <!-- Basket list -->
+    <div id="basketsList"></div>
+
+    <!-- New basket button -->
+    <button class="btn-primary" onclick="openNewBasketModal()" style="margin-top:6px;">+ צור סל חדש</button>
+  </div>
+</div>
+
+<!-- NEW/EDIT BASKET MODAL -->
+<div class="overlay" id="basketEditOverlay" style="display:none" onclick="closeBasketEditModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;max-height:88vh;">
+    <button class="modal-close" onclick="closeBasketEditModal()">✕</button>
+    <div class="modal-title" id="basketEditTitle">סל חדש</div>
+
+    <label class="form-label">שם הסל</label>
+    <input class="form-input" id="basketNameInput" placeholder="לדוגמה: סל שבתי" maxlength="24"
+      onkeydown="if(event.key==='Enter') document.getElementById('basketItemInput').focus()">
+
+    <label class="form-label" style="margin-top:12px;">פריטים בסל</label>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <input class="form-input" id="basketItemInput" placeholder="הוסף פריט לסל..." style="flex:1;"
+        onkeydown="if(event.key==='Enter') addItemToBasketEdit()">
+      <button class="btn-add-cat" onclick="addItemToBasketEdit()">+ הוסף</button>
+    </div>
+    <div id="basketEditItems" style="max-height:240px;overflow-y:auto;margin-bottom:12px;border:1.5px solid var(--border);border-radius:10px;padding:6px 10px;min-height:40px;"></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">💡 רק פריטים שנמצאים בבנק יוכנסו לרשימה כשתפעיל את הסל</div>
+
+    <button class="btn-primary" onclick="saveBasketEdit()">💾 שמור סל</button>
+  </div>
+</div>
+
 <div class="toast" id="toast" style="display:none"></div>
 
 <script>
@@ -843,7 +901,7 @@ function guessCategory(name) {
 // STATE
 // ═══════════════════════════════════════════════════
 const DEFAULT_CATS = ["כללי","ירקות ופירות","מוצרי חלב","בשר ודגים","לחם ומאפים","שתייה","חטיפים וממתקים","ניקיון ותכשירים","קפואים","שימורים"];
-let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst", listName:"" };
+let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst", listName:"", baskets:[] };
 
 // Firebase state
 let currentListId  = null;
@@ -888,7 +946,7 @@ async function saveToFirestore() {
   const data = {
     bank: state.bank, cart: state.cart, categories: state.categories,
     bankSort: state.bankSort, catSort: state.catSort, viewOrder: state.viewOrder,
-    listName: state.listName || "",
+    listName: state.listName || "", baskets: state.baskets || [],
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   const hash = stateHash();
@@ -923,6 +981,7 @@ function applyRemoteData(data) {
     const el = document.getElementById("headerListName");
     if (el) el.textContent = data.listName || "רשימת קניות";
   }
+  if (data.baskets) state.baskets = data.baskets;
   lastSavedHash = incoming;
   try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: currentListId })); } catch(e){}
   renderBank(); renderCart(); updateHeader(); applyViewOrder(); syncBankSortButtons();
@@ -1072,7 +1131,7 @@ function leaveList() {
   if (firestoreUnsub) { firestoreUnsub(); firestoreUnsub = null; }
   currentListId = null;
   try { localStorage.removeItem("shoppingApp_v5"); } catch(e){}
-  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst", listName:"" };
+  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst", listName:"", baskets:[] };
   undoStack.length = 0;
   document.getElementById("undoBtn").disabled = true;
   document.getElementById("shareOverlay").style.display = "none";
@@ -1088,21 +1147,33 @@ function leaveList() {
 async function sendUpdateNotification() {
   if (!currentListId) return;
   const btn = document.getElementById("notifyBtn");
-  btn.disabled = true; btn.textContent = "🔔 שולח...";
+  btn.disabled = true; btn.innerHTML = "🔔 שולח...";
+  const myUid = auth.currentUser?.uid || "unknown";
   try {
     await db.collection("lists").doc(currentListId).set({
       notification: {
         message: "🛒 הרשימה עודכנה!",
-        by: auth.currentUser?.uid || "unknown",
-        at: firebase.firestore.FieldValue.serverTimestamp()
+        by: myUid,
+        at: firebase.firestore.FieldValue.serverTimestamp(),
+        seenBy: [myUid] // sender auto-marked as seen
       }
     }, { merge: true });
-    btn.textContent = "✅ נשלח!";
-    setTimeout(() => { btn.textContent = "🔔 עדכנתי את הרשימה"; btn.disabled = false; }, 2500);
+    btn.innerHTML = "🔔 עדכנתי את הרשימה · נראה על ידי 0";
+    btn.disabled = false;
   } catch(e) {
-    btn.textContent = "🔔 עדכנתי את הרשימה"; btn.disabled = false;
+    btn.innerHTML = "🔔 עדכנתי את הרשימה"; btn.disabled = false;
     showToast("שגיאה בשליחה");
   }
+}
+
+async function markNotificationSeen() {
+  if (!currentListId || !auth.currentUser) return;
+  const myUid = auth.currentUser.uid;
+  try {
+    await db.collection("lists").doc(currentListId).update({
+      "notification.seenBy": firebase.firestore.FieldValue.arrayUnion(myUid)
+    });
+  } catch(e) { /* silent */ }
 }
 
 let lastNotificationAt = null;
@@ -1124,10 +1195,25 @@ function subscribeToList(code) {
       if (data.notification && data.notification.at) {
         const notifAt = data.notification.at.toMillis ? data.notification.at.toMillis() : 0;
         const myUid = auth.currentUser?.uid;
+        const seenBy = data.notification.seenBy || [];
+
+        // Update read receipt count for the sender
+        if (data.notification.by === myUid) {
+          const seenCount = seenBy.filter(u => u !== myUid).length;
+          const btn = document.getElementById("notifyBtn");
+          if (btn && !btn.disabled) {
+            btn.innerHTML = seenCount > 0
+              ? `✅ נראה על ידי ${seenCount} ${seenCount===1?"משתמש":"משתמשים"}`
+              : "🔔 עדכנתי את הרשימה · ממתין לאישור...";
+          }
+        }
+
+        // For non-senders: show toast + mark as seen
         if (lastNotificationAt && notifAt > lastNotificationAt && data.notification.by !== myUid) {
           showToast("🔔 " + (data.notification.message || "הרשימה עודכנה!"));
+          markNotificationSeen();
         }
-        if (!lastNotificationAt) lastNotificationAt = notifAt; // init
+        if (!lastNotificationAt) lastNotificationAt = notifAt;
         else lastNotificationAt = Math.max(lastNotificationAt, notifAt);
       }
 
@@ -1197,6 +1283,147 @@ function copyCode() {
   } else {
     showToast("הקוד: " + code);
   }
+}
+
+// ═══════════════════════════════════════════════════
+// BASKETS
+// ═══════════════════════════════════════════════════
+let editingBasketId = null;
+let editingBasketItems = []; // [{name}] during edit
+
+function openBasketsModal() {
+  renderBasketsList();
+  document.getElementById("basketsOverlay").style.display = "flex";
+}
+function closeBasketsModal() { document.getElementById("basketsOverlay").style.display = "none"; }
+
+function renderBasketsList() {
+  const el = document.getElementById("basketsList");
+  el.innerHTML = "";
+  const baskets = state.baskets || [];
+  if (!baskets.length) {
+    el.innerHTML = '<div class="empty" style="margin-bottom:10px;">עוד אין סלים. צור את הראשון! 🧺</div>';
+    return;
+  }
+  baskets.forEach(basket => {
+    const card = document.createElement("div"); card.className = "basket-card";
+    const hdr = document.createElement("div"); hdr.className = "basket-header";
+    const nameEl = document.createElement("span"); nameEl.className = "basket-name"; nameEl.textContent = "🧺 " + basket.name;
+    const countEl = document.createElement("span"); countEl.className = "basket-count";
+    countEl.textContent = `${basket.items.length} פריטים`;
+    hdr.appendChild(nameEl); hdr.appendChild(countEl);
+
+    const preview = document.createElement("div"); preview.className = "basket-preview";
+    preview.textContent = basket.items.slice(0,6).join(" · ") + (basket.items.length>6?" ···":"");
+
+    const actions = document.createElement("div"); actions.className = "basket-actions";
+    const btnAdd = document.createElement("button"); btnAdd.className = "btn-basket-add";
+    btnAdd.textContent = "➕ הוסף לרשימה"; btnAdd.onclick = () => addBasketToCart(basket);
+    const btnEdit = document.createElement("button"); btnEdit.className = "btn-basket-edit";
+    btnEdit.textContent = "✏️"; btnEdit.onclick = () => openEditBasketModal(basket);
+    const btnDel = document.createElement("button"); btnDel.className = "btn-basket-del";
+    btnDel.textContent = "🗑️"; btnDel.onclick = () => deleteBasket(basket.id);
+    actions.appendChild(btnAdd); actions.appendChild(btnEdit); actions.appendChild(btnDel);
+
+    card.appendChild(hdr); card.appendChild(preview); card.appendChild(actions);
+    el.appendChild(card);
+  });
+}
+
+function addBasketToCart(basket) {
+  const items = basket.items || [];
+  let added = 0;
+  pushUndo();
+  items.forEach(itemName => {
+    // Find in bank
+    const bankIdx = state.bank.findIndex(i => i.name === itemName);
+    if (bankIdx !== -1) {
+      const item = state.bank[bankIdx];
+      if (!state.cart.some(c => c.id === item.id)) {
+        state.bank.splice(bankIdx, 1);
+        state.cart.push({...item, note:"", qty:0, status:null});
+        added++;
+      }
+    } else if (!state.cart.some(c => c.name === itemName)) {
+      // Not in bank either — add directly to cart as new
+      state.cart.push({id:uid(), name:itemName, category:"כללי", note:"", qty:0, status:null});
+      added++;
+    }
+  });
+  save(); renderBank(); renderCart();
+  showToast(`✅ ${added} פריטים נוספו לרשימה`);
+  closeBasketsModal();
+}
+
+function deleteBasket(id) {
+  pushUndo();
+  state.baskets = (state.baskets||[]).filter(b => b.id !== id);
+  save(); renderBasketsList();
+}
+
+// Edit/create modal
+function openNewBasketModal() {
+  editingBasketId = null;
+  editingBasketItems = [];
+  document.getElementById("basketEditTitle").textContent = "סל חדש";
+  document.getElementById("basketNameInput").value = "";
+  renderBasketEditItems();
+  document.getElementById("basketEditOverlay").style.display = "flex";
+  setTimeout(() => document.getElementById("basketNameInput").focus(), 100);
+}
+
+function openEditBasketModal(basket) {
+  editingBasketId = basket.id;
+  editingBasketItems = [...basket.items];
+  document.getElementById("basketEditTitle").textContent = "עריכת סל";
+  document.getElementById("basketNameInput").value = basket.name;
+  renderBasketEditItems();
+  document.getElementById("basketEditOverlay").style.display = "flex";
+}
+
+function closeBasketEditModal() {
+  document.getElementById("basketEditOverlay").style.display = "none";
+  document.getElementById("basketItemInput").value = "";
+}
+
+function renderBasketEditItems() {
+  const el = document.getElementById("basketEditItems");
+  el.innerHTML = "";
+  if (!editingBasketItems.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-dim);text-align:center;padding:8px;">עוד אין פריטים</div>';
+    return;
+  }
+  editingBasketItems.forEach((name, idx) => {
+    const row = document.createElement("div"); row.className = "basket-item-row";
+    const lbl = document.createElement("label"); lbl.textContent = name;
+    const del = document.createElement("button"); del.className = "basket-item-del"; del.textContent = "✕";
+    del.onclick = () => { editingBasketItems.splice(idx,1); renderBasketEditItems(); };
+    row.appendChild(lbl); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+
+function addItemToBasketEdit() {
+  const inp = document.getElementById("basketItemInput");
+  const name = inp.value.trim(); if (!name) return;
+  if (!editingBasketItems.includes(name)) editingBasketItems.push(name);
+  inp.value = ""; inp.focus(); renderBasketEditItems();
+}
+
+function saveBasketEdit() {
+  const name = document.getElementById("basketNameInput").value.trim();
+  if (!name) { showToast("יש להזין שם לסל"); return; }
+  if (!editingBasketItems.length) { showToast("יש להוסיף לפחות פריט אחד"); return; }
+  pushUndo();
+  if (!state.baskets) state.baskets = [];
+  if (editingBasketId) {
+    const idx = state.baskets.findIndex(b => b.id === editingBasketId);
+    if (idx !== -1) { state.baskets[idx].name = name; state.baskets[idx].items = [...editingBasketItems]; }
+  } else {
+    state.baskets.push({ id: uid(), name, items: [...editingBasketItems] });
+  }
+  save(); closeBasketEditModal(); renderBasketsList();
+  showToast(`✅ הסל "${name}" נשמר`);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1364,7 +1591,11 @@ function buildCartItem(item) {
   // Name — flex:1 so it expands, anchored to the RIGHT in RTL
   const name=document.createElement("span"); name.className="cart-name"; name.textContent=item.name;
 
-  // ── QTY controls — compact group, sits immediately to the LEFT of name in RTL ──
+  // ── QTY controls — must appear visually BETWEEN name and action buttons ──
+  // In RTL flex: DOM order determines right-to-left position.
+  // name(flex:1) is first = far right. qtyGroup second = just left of name. Then action buttons.
+  // Inside qtyGroup for RTL: [+] should be closest to name (rightmost), [−] furthest.
+  // DOM order inside group: [+, num, −] → RTL renders + rightmost (closest to name) ✓
   const qty = item.qty || 0;
   const qtyGroup = document.createElement("div");
   qtyGroup.style.cssText = "display:flex;align-items:center;gap:2px;flex-shrink:0;";
@@ -1373,15 +1604,14 @@ function buildCartItem(item) {
   const qtyNum      = document.createElement("span");   qtyNum.className="qty-num";
   const btnQtyMinus = document.createElement("button"); btnQtyMinus.className="btn-qty btn-qty-minus"; btnQtyMinus.textContent="−";
 
-  qtyNum.textContent      = qty||"";
-  qtyNum.style.display    = qty>0?"inline":"none";
+  qtyNum.textContent        = qty||"";
+  qtyNum.style.display      = qty>0?"inline":"none";
   btnQtyMinus.style.display = qty>0?"flex":"none";
 
-  // In RTL flex, DOM order: [−, num, +] renders visually as [+][num][−] from left-to-right within group
-  // We want [+] closest to name, [−] further left: DOM order = [−, num, +]
-  qtyGroup.appendChild(btnQtyMinus);
-  qtyGroup.appendChild(qtyNum);
+  // DOM: [+, num, −] → in RTL + is rightmost (next to name) ✓
   qtyGroup.appendChild(btnQtyPlus);
+  qtyGroup.appendChild(qtyNum);
+  qtyGroup.appendChild(btnQtyMinus);
 
   btnQtyPlus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
