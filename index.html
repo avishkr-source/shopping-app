@@ -471,7 +471,31 @@
   .help-text { color:var(--text); line-height:1.45; }
   .help-text strong { color:var(--blue); }
 
-  ::-webkit-scrollbar { width:3px; }
+  /* SAVED LISTS */
+  .saved-lists { margin-top:4px; }
+  .saved-list-item {
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg); border:1.5px solid var(--border); border-radius:11px;
+    padding:9px 12px; margin-bottom:7px; cursor:pointer; transition:all .15s;
+  }
+  .saved-list-item:active { background:var(--blue-pale); border-color:var(--blue-l); }
+  .saved-list-icon { font-size:20px; flex-shrink:0; }
+  .saved-list-info { flex:1; min-width:0; }
+  .saved-list-name { font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .saved-list-code { font-size:11px; color:var(--text-dim); font-family:monospace; letter-spacing:1px; }
+  .saved-list-del { background:none; border:none; cursor:pointer; color:var(--text-dim); font-size:14px; padding:2px 4px; flex-shrink:0; transition:color .15s; }
+  .saved-list-del:active { color:var(--red); }
+
+  /* ADD-TO-BANK IN CAT MODAL */
+  .cat-add-bank-row { display:flex; gap:6px; margin-bottom:10px; flex-shrink:0; }
+  .cat-add-bank-input {
+    flex:1; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px;
+    padding:7px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit; transition:border-color .2s;
+  }
+  .cat-add-bank-input:focus { border-color:var(--blue-l); }
+  .cat-add-bank-input::placeholder { color:var(--text-dim); }
+  .btn-add-bank { flex-shrink:0; background:var(--blue); border:none; border-radius:9px; color:#fff; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; }
+  .btn-add-bank:active { background:#2f5ab8; transform:scale(.96); }
   ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes fadeUp  { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
@@ -486,6 +510,13 @@
     <div class="lobby-logo">🛒</div>
     <div class="lobby-title">רשימת קניות</div>
     <div class="lobby-sub">שתפו רשימה עם בני המשפחה בזמן אמת</div>
+
+    <!-- SAVED LISTS (shown if any) -->
+    <div id="savedListsWrap" style="display:none;">
+      <div class="lobby-section-title">הרשימות שלי</div>
+      <div class="saved-lists" id="savedListsEl"></div>
+      <div class="lobby-divider"><div class="lobby-divider-line"></div><div class="lobby-divider-text">או</div><div class="lobby-divider-line"></div></div>
+    </div>
 
     <div class="lobby-section-title">יצירת רשימה חדשה</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:5px;">הרשימה של... (עד 16 תווים)</div>
@@ -524,9 +555,9 @@
     <button class="btn-undo" onclick="openHelp()" title="הוראות שימוש" style="margin-right:auto;flex-shrink:0;">❓</button>
   </div>
   <div class="header-row2">
-    <button class="btn-cat" onclick="openCatModal()">📂 קטגוריות</button>
+    <button class="btn-cat" onclick="openCatModal()">📂 ניהול קטגוריות</button>
     <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
-    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ שנה סדר</button>
+    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ הצג רשימה קודם</button>
     <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ בטל</button>
   </div>
 </div>
@@ -652,6 +683,12 @@
       <div class="cat-divider-line"></div>
       <div class="cat-divider-label">כל הפריטים</div>
       <div class="cat-divider-line"></div>
+    </div>
+    <!-- Add item to bank from within modal -->
+    <div class="cat-add-bank-row">
+      <input class="cat-add-bank-input" id="catAddBankInput" placeholder="הוסף פריט לבנק..." autocomplete="off"
+        onkeydown="if(event.key==='Enter') addToBankFromCat()">
+      <button class="btn-add-bank" onclick="addToBankFromCat()">+ הוסף</button>
     </div>
     <div class="items-section">
       <div class="items-list" id="catItemsList"></div>
@@ -877,6 +914,58 @@ function generateCode() {
 }
 function uid() { return Math.random().toString(36).substr(2,9); }
 
+// ── SAVED LISTS (history) ────────────────────────
+function getSavedLists() {
+  try { return JSON.parse(localStorage.getItem("shoppingApp_history") || "[]"); } catch(e) { return []; }
+}
+function addToSavedLists(code, listName) {
+  let lists = getSavedLists().filter(l => l.code !== code); // dedup
+  lists.unshift({ code, name: listName || "רשימת קניות", ts: Date.now() });
+  if (lists.length > 10) lists = lists.slice(0, 10);
+  try { localStorage.setItem("shoppingApp_history", JSON.stringify(lists)); } catch(e) {}
+}
+function removeFromSavedLists(code) {
+  const lists = getSavedLists().filter(l => l.code !== code);
+  try { localStorage.setItem("shoppingApp_history", JSON.stringify(lists)); } catch(e) {}
+  renderSavedLists();
+}
+function renderSavedLists() {
+  const lists = getSavedLists();
+  const wrap = document.getElementById("savedListsWrap");
+  const el   = document.getElementById("savedListsEl");
+  if (!lists.length) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  el.innerHTML = "";
+  lists.forEach(l => {
+    const row = document.createElement("div"); row.className = "saved-list-item";
+    row.onclick = () => quickJoinList(l.code, l.name);
+    const icon = document.createElement("span"); icon.className = "saved-list-icon"; icon.textContent = "🛒";
+    const info = document.createElement("div"); info.className = "saved-list-info";
+    const name = document.createElement("div"); name.className = "saved-list-name"; name.textContent = l.name;
+    const code = document.createElement("div"); code.className = "saved-list-code"; code.textContent = l.code;
+    info.appendChild(name); info.appendChild(code);
+    const del = document.createElement("button"); del.className = "saved-list-del"; del.textContent = "✕";
+    del.title = "הסר מהרשימות שלי";
+    del.onclick = e => { e.stopPropagation(); removeFromSavedLists(l.code); };
+    row.appendChild(icon); row.appendChild(info); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+async function quickJoinList(code, name) {
+  setLobbyStatus("מתחבר...");
+  try {
+    await ensureAuth();
+    const snap = await db.collection("lists").doc(code).get();
+    if (!snap.exists) {
+      setLobbyStatus("הרשימה לא נמצאה — אולי נמחקה?", true);
+      removeFromSavedLists(code);
+      return;
+    }
+    const data = snap.data();
+    enterList(code, data.listName || name);
+  } catch(e) { setLobbyStatus("שגיאת חיבור.", true); }
+}
+
 // ═══════════════════════════════════════════════════
 // LOBBY — CREATE / JOIN
 // ═══════════════════════════════════════════════════
@@ -928,6 +1017,8 @@ async function joinList() {
 function enterList(code, listName) {
   currentListId = code;
   if (listName) state.listName = listName;
+  // Save to history
+  addToSavedLists(code, state.listName || listName || "רשימת קניות");
   try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: code })); } catch(e){}
   document.getElementById("lobby").style.display = "none";
   document.getElementById("appHeader").style.display = "block";
@@ -957,6 +1048,7 @@ function leaveList() {
   document.getElementById("appMain").style.display = "none";
   document.getElementById("joinCodeInput").value = "";
   document.getElementById("lobby").style.display = "flex";
+  renderSavedLists();
   setLobbyStatus("");
 }
 
@@ -1225,6 +1317,16 @@ function addToBank() {
   inp.value=""; document.getElementById("acSuggestion").innerHTML=""; closeAcDropdown(); document.getElementById("catPreview").textContent="";
   save(); renderBank();
 }
+function addToBankFromCat() {
+  const inp = document.getElementById("catAddBankInput");
+  const name = inp.value.trim(); if(!name) return;
+  if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט זה כבר קיים"); return;}
+  pushUndo();
+  const cat = guessCategory(name) || "כללי";
+  state.bank.push({id:uid(), name, category:cat, autoClassified:true});
+  inp.value=""; save(); renderBank(); renderCatItems();
+  showToast(`✅ "${name}" נוסף לבנק`);
+}
 function moveToCart(item) {
   pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); state.cart.push({...item,note:"",status:null});
   save(); renderBank(); renderCart();
@@ -1390,12 +1492,15 @@ function applyViewOrder(){
   const divider=document.querySelector(".section-divider");
   const cart=document.getElementById("sectionCart");
   if(!main||!bank||!cart)return;
+  const btn = document.getElementById("viewToggleBtn");
   if(state.viewOrder==="cartFirst"){
     main.insertBefore(cart,bank);
     if(divider) main.insertBefore(divider,bank);
+    if(btn) btn.textContent = "⇅ הצג בנק קודם";
   } else {
     main.insertBefore(bank,cart);
     if(divider) main.insertBefore(divider,cart);
+    if(btn) btn.textContent = "⇅ הצג רשימה קודם";
   }
 }
 function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartFirst":"bankFirst"; save(); applyViewOrder(); }
@@ -1465,6 +1570,9 @@ function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartF
 (async function init() {
   // Sign in anonymously (silent)
   try { await auth.signInAnonymously(); } catch(e) { console.warn("Auth failed", e); }
+
+  // Render saved lists in lobby
+  renderSavedLists();
 
   // Check for saved list
   try {
