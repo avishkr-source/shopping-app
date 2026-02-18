@@ -1633,6 +1633,7 @@ function buildCartItem(item) {
 
   // ── Action buttons (left side) ──
   const noteToggle=document.createElement("button"); noteToggle.className="note-toggle"; noteToggle.textContent="✏️";
+  noteToggle.style.marginRight = "6px"; // visual separator from qty group
   const btnCheck=document.createElement("button"); btnCheck.className="btn-icon btn-check"+(item.status==="done"?" active":""); btnCheck.textContent="✓"; btnCheck.onclick=()=>setCartStatus(item.id,"done");
   const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
   const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
