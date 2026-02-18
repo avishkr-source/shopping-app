@@ -527,6 +527,33 @@
   .notif-dot-gray   { background:#b0b8cc; }
   .notif-dot-hollow { background:transparent; border:2px solid #1a9e6b; }
   .notif-dot-filled { background:#1a9e6b; }
+  /* IMPORT */
+  .import-textarea {
+    width:100%; min-height:130px; resize:vertical;
+    background:var(--bg2); border:1.5px solid var(--border); border-radius:10px;
+    padding:10px 12px; font-size:13px; font-family:inherit; color:var(--text);
+    outline:none; transition:border-color .2s; line-height:1.6; direction:rtl;
+  }
+  .import-textarea:focus { border-color:#c4aaee; }
+  .import-textarea::placeholder { color:var(--text-dim); }
+  .import-preview { border:1.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:12px; }
+  .import-preview-item {
+    display:flex; align-items:center; gap:8px; padding:7px 12px;
+    border-bottom:1px solid var(--border); font-size:13px;
+  }
+  .import-preview-item:last-child { border-bottom:none; }
+  .import-preview-item input[type=checkbox] { width:16px;height:16px;accent-color:#7c3aed;flex-shrink:0; }
+  .import-preview-name { flex:1; color:var(--text); }
+  .import-preview-cat { font-size:10px; color:var(--text-dim); background:var(--bg3); border-radius:5px; padding:1px 6px; }
+  .import-preview-qty { font-size:11px; color:#7c3aed; font-weight:700; background:#f0eaff; border-radius:5px; padding:1px 6px; }
+  .import-dest-row { display:flex; gap:8px; margin-bottom:12px; }
+  .import-dest-btn {
+    flex:1; padding:9px; border-radius:10px; border:2px solid var(--border);
+    background:var(--bg2); font-size:12px; font-weight:700; cursor:pointer;
+    font-family:inherit; color:var(--text-mid); transition:all .15s; text-align:center;
+  }
+  .import-dest-btn.selected { border-color:#7c3aed; background:#f0eaff; color:#7c3aed; }
+  .import-dest-btn:active { transform:scale(.97); }
   ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
   /* BASKETS */
   .basket-card {
@@ -610,6 +637,7 @@
   <div class="header-row2">
     <button class="btn-cat" onclick="openCatModal()" style="font-size:10px;padding:5px 7px;">📂 קטגוריות</button>
     <button class="btn-cat" onclick="openBasketsModal()" style="font-size:10px;padding:5px 7px;background:var(--green-l);border-color:#a8e8cc;color:var(--green);">🧺 סלים</button>
+    <button class="btn-cat" onclick="openImportModal()" style="font-size:10px;padding:5px 7px;background:#f0eaff;border-color:#c4aaee;color:#7c3aed;">📋 טעינה</button>
     <button class="btn-share" onclick="openShareModal()" style="font-size:10px;padding:5px 7px;">🔗 שיתוף</button>
     <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()" style="font-size:10px;padding:5px 7px;">⇅ הצג רשימה קודם</button>
   </div>
@@ -859,6 +887,46 @@
     <div id="basketEditItems" style="max-height:180px;overflow-y:auto;margin-bottom:10px;border:1.5px solid var(--border);border-radius:10px;padding:6px 10px;min-height:36px;"></div>
 
     <button class="btn-primary" onclick="saveBasketEdit()">💾 שמור סל</button>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="importOverlay" style="display:none" onclick="closeImportModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column;">
+    <button class="modal-close" onclick="closeImportModal()">✕</button>
+    <div class="modal-title">📋 טעינת רשימה</div>
+
+    <!-- Step 1: paste text -->
+    <div id="importStep1">
+      <div class="form-label" style="margin-top:0;">הדבק רשימת מצרכים:</div>
+      <textarea class="import-textarea" id="importTextarea"
+        placeholder="לדוגמה:&#10;חלב × 2&#10;לחם&#10;עגבניות, מלפפון, בצל&#10;3 ביצים&#10;גבינה צהובה"></textarea>
+      <div style="font-size:11px;color:var(--text-dim);margin:5px 0 12px;">תומך בשורות, פסיקים, כמויות ותבניות ווטסאפ</div>
+      <button class="btn-primary" onclick="parseImportText()" style="width:100%;">🔍 המשך</button>
+    </div>
+
+    <!-- Step 2: preview + destination -->
+    <div id="importStep2" style="display:none;overflow-y:auto;flex:1;">
+      <!-- Destination selector -->
+      <div class="form-label">לאן לטעון?</div>
+      <div class="import-dest-row">
+        <button class="import-dest-btn selected" id="destBankBtn" onclick="setImportDest('bank')">
+          🗄️ בנק המצרכים בלבד
+        </button>
+        <button class="import-dest-btn" id="destCartBtn" onclick="setImportDest('cart')">
+          🛒 רשימה + בנק
+        </button>
+      </div>
+
+      <!-- Preview list -->
+      <div class="form-label">פריטים שזוהו — <span id="importSelectedCount">0</span> נבחרו:</div>
+      <div class="import-preview" id="importPreview"></div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" onclick="goBackImport()" style="flex:0 0 auto;">← חזור</button>
+        <button class="btn-primary" onclick="doImport()" style="flex:1;">✅ טען לאפליקציה</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1543,6 +1611,162 @@ function saveBasketEdit() {
   }
   save(); closeBasketEditModal(); renderBasketsList();
   showToast(`✅ הסל "${name}" נשמר`);
+}
+
+// ═══════════════════════════════════════════════════
+// IMPORT
+// ═══════════════════════════════════════════════════
+let importDest = "bank"; // "bank" | "cart"
+let importItems = []; // [{name, qty, category, selected}]
+
+function openImportModal() {
+  document.getElementById("importTextarea").value = "";
+  document.getElementById("importStep1").style.display = "block";
+  document.getElementById("importStep2").style.display = "none";
+  importItems = [];
+  importDest = "bank";
+  setImportDest("bank");
+  document.getElementById("importOverlay").style.display = "flex";
+  setTimeout(() => document.getElementById("importTextarea").focus(), 100);
+}
+function closeImportModal() { document.getElementById("importOverlay").style.display = "none"; }
+function goBackImport() {
+  document.getElementById("importStep1").style.display = "block";
+  document.getElementById("importStep2").style.display = "none";
+}
+function setImportDest(dest) {
+  importDest = dest;
+  document.getElementById("destBankBtn").classList.toggle("selected", dest === "bank");
+  document.getElementById("destCartBtn").classList.toggle("selected", dest === "cart");
+}
+
+function parseImportText() {
+  const raw = document.getElementById("importTextarea").value.trim();
+  if (!raw) { showToast("יש להדביק טקסט"); return; }
+
+  // Split by newlines and commas
+  const lines = raw.split(/[\n,،]+/);
+  const parsed = [];
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    // Remove bullet/list markers: •, -, *, –, ·, numbers+dot
+    line = line.replace(/^[\s•\-\*–·]+/, "").replace(/^\d+[\.\)]\s*/, "").trim();
+    if (!line) return;
+
+    // Detect quantity patterns:
+    // "3 x item", "3x item", "3 × item", "item × 3", "item x3", "item (3)"
+    let qty = 0, name = line;
+
+    const patterns = [
+      /^(\d+)\s*[xX×]\s*(.+)/,        // "3 x item"
+      /^(.+?)\s*[xX×]\s*(\d+)$/,      // "item x 3"
+      /^(\d+)\s+(.+)/,                 // "3 item" (leading number)
+      /^(.+?)\s+(\d+)$/,              // "item 3" (trailing number)
+      /^(.+?)\s*[\(\[]\s*(\d+)\s*[\)\]]/  // "item (3)"
+    ];
+
+    for (const pat of patterns) {
+      const m = line.match(pat);
+      if (m) {
+        // Figure out which group is number and which is name
+        const g1isNum = /^\d+$/.test(m[1]);
+        qty  = parseInt(g1isNum ? m[1] : m[2]) || 0;
+        name = (g1isNum ? m[2] : m[1]).trim();
+        break;
+      }
+    }
+
+    // Clean up name: remove trailing/leading punctuation
+    name = name.replace(/^[:\-–\s]+|[:\-–\s]+$/g, "").trim();
+    if (!name || name.length < 1) return;
+
+    // Skip obvious non-items
+    if (/^\d+$/.test(name)) return;
+
+    // Deduplicate
+    if (parsed.some(p => p.name === name)) return;
+
+    const cat = guessCategory(name) || "כללי";
+    parsed.push({ name, qty, category: cat, selected: true });
+  });
+
+  if (!parsed.length) { showToast("לא זוהו פריטים — נסה פורמט אחר"); return; }
+
+  importItems = parsed;
+  renderImportPreview();
+  document.getElementById("importStep1").style.display = "none";
+  document.getElementById("importStep2").style.display = "flex";
+  document.getElementById("importStep2").style.flexDirection = "column";
+}
+
+function renderImportPreview() {
+  const el = document.getElementById("importPreview");
+  el.innerHTML = "";
+  importItems.forEach((item, idx) => {
+    const row = document.createElement("div"); row.className = "import-preview-item";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = item.selected;
+    cb.onchange = () => { importItems[idx].selected = cb.checked; updateImportCount(); };
+
+    const nameEl = document.createElement("span"); nameEl.className = "import-preview-name";
+    nameEl.textContent = item.name;
+
+    const catEl = document.createElement("span"); catEl.className = "import-preview-cat";
+    catEl.textContent = item.category;
+
+    row.appendChild(cb); row.appendChild(nameEl); row.appendChild(catEl);
+    if (item.qty > 0) {
+      const qEl = document.createElement("span"); qEl.className = "import-preview-qty";
+      qEl.textContent = "×" + item.qty;
+      row.appendChild(qEl);
+    }
+    el.appendChild(row);
+  });
+  updateImportCount();
+}
+
+function updateImportCount() {
+  const n = importItems.filter(i=>i.selected).length;
+  document.getElementById("importSelectedCount").textContent = n;
+}
+
+function doImport() {
+  const selected = importItems.filter(i => i.selected);
+  if (!selected.length) { showToast("לא נבחרו פריטים"); return; }
+  pushUndo();
+  let addedBank = 0, addedCart = 0;
+
+  selected.forEach(item => {
+    const inBank = state.bank.some(i => i.name === item.name);
+    const inCart = state.cart.some(i => i.name === item.name);
+
+    if (!inBank && !inCart) {
+      const newItem = { id: uid(), name: item.name, category: item.category, autoClassified: true };
+      if (importDest === "cart") {
+        // Add to bank AND move to cart
+        state.cart.push({ ...newItem, note: "", qty: item.qty || 0, status: null });
+        addedCart++;
+      } else {
+        state.bank.push(newItem);
+        addedBank++;
+      }
+    } else if (importDest === "cart" && inBank && !inCart) {
+      // Move from bank to cart
+      const bankIdx = state.bank.findIndex(i => i.name === item.name);
+      const bankItem = state.bank.splice(bankIdx, 1)[0];
+      state.cart.push({ ...bankItem, note: "", qty: item.qty || 0, status: null });
+      addedCart++;
+    }
+    // If already in cart — skip
+  });
+
+  save(); renderBank(); renderCart(); closeImportModal();
+  const msg = importDest === "cart"
+    ? `✅ ${addedCart} פריטים נוספו לרשימה`
+    : `✅ ${addedBank} פריטים נוספו לבנק`;
+  showToast(msg);
 }
 
 // ═══════════════════════════════════════════════════
