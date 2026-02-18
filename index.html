@@ -115,32 +115,38 @@
   .sync-dot.error      { background:var(--red); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   .header-sub { font-size:10px; color:var(--text-dim); margin-top:1px; }
-  .header-row2 { display:flex; gap:5px; align-items:center; }
   .btn-undo {
-    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
-    color:var(--text-mid); padding:5px 8px; font-size:11px; font-weight:600;
+    background:var(--bg3); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--text-mid); padding:5px 9px; font-size:11px; font-weight:600;
     cursor:pointer; line-height:1; transition:all .15s; white-space:nowrap; font-family:inherit;
   }
   .btn-undo:active { background:#d0d8f0; transform:scale(.95); }
   .btn-undo:disabled { opacity:.3; cursor:default; }
   .btn-view {
-    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
-    color:var(--text-mid); padding:5px 8px; font-size:11px; font-weight:600;
+    background:var(--bg3); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--text-mid); padding:5px 9px; font-size:11px; font-weight:600;
     cursor:pointer; line-height:1; transition:all .15s; font-family:inherit; white-space:nowrap;
   }
   .btn-view:active { background:#d0d8f0; transform:scale(.95); }
   .btn-share {
-    background:var(--green-l); border:1px solid #a8e8cc; border-radius:8px;
-    color:var(--green); padding:5px 8px; font-size:11px; font-weight:700;
+    background:var(--green-l); border:1.5px solid #a8e8cc; border-radius:8px;
+    color:var(--green); padding:5px 9px; font-size:11px; font-weight:700;
     cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
   }
   .btn-share:active { background:#b8f0d8; transform:scale(.97); }
   .btn-cat {
-    background:var(--blue-pale); border:1px solid #b8cbf5; border-radius:8px;
-    color:var(--blue); padding:5px 8px; font-size:11px; font-weight:600;
-    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; margin-right:auto;
+    background:var(--blue-pale); border:1.5px solid #b8cbf5; border-radius:8px;
+    color:var(--blue); padding:5px 9px; font-size:11px; font-weight:600;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
   }
   .btn-cat:active { background:#c8d8f8; transform:scale(.97); }
+  /* Pill-style row2 container */
+  .header-row2 {
+    display:flex; gap:5px; align-items:center;
+    background:var(--bg); border:1.5px solid var(--border); border-radius:12px;
+    padding:4px 6px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .header-row2::-webkit-scrollbar { display:none; }
 
   /* ── MAIN ─────────────────────────────────────── */
   .main { padding:12px; max-width:600px; margin:0 auto; padding-bottom:40px; }
@@ -635,11 +641,11 @@
     <button class="btn-undo" onclick="leaveList()" title="החלף רשימה" style="flex-shrink:0;">🏠</button>
   </div>
   <div class="header-row2">
-    <button class="btn-cat" onclick="openCatModal()" style="font-size:10px;padding:5px 7px;">📂 קטגוריות</button>
-    <button class="btn-cat" onclick="openBasketsModal()" style="font-size:10px;padding:5px 7px;background:var(--green-l);border-color:#a8e8cc;color:var(--green);">🧺 סלים</button>
-    <button class="btn-cat" onclick="openImportModal()" style="font-size:10px;padding:5px 7px;background:#f0eaff;border-color:#c4aaee;color:#7c3aed;">📋 טעינה</button>
-    <button class="btn-share" onclick="openShareModal()" style="font-size:10px;padding:5px 7px;">🔗 שיתוף</button>
-    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()" style="font-size:10px;padding:5px 7px;">⇅ הצג רשימה קודם</button>
+    <button class="btn-cat" onclick="openCatModal()">📂 קטגוריות</button>
+    <button class="btn-cat" onclick="openBasketsModal()" style="background:var(--green-l);border-color:#a8e8cc;color:var(--green);">🧺 סלים</button>
+    <button class="btn-cat" onclick="openImportModal()" style="background:#f0eaff;border-color:#c4aaee;color:#7c3aed;">📋 טעינה</button>
+    <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
+    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ החלף תצוגה</button>
   </div>
 </div>
 
@@ -858,8 +864,11 @@
     <!-- Basket list -->
     <div id="basketsList"></div>
 
-    <!-- New basket button -->
-    <button class="btn-primary" onclick="openNewBasketModal()" style="margin-top:6px;">+ צור סל חדש</button>
+    <!-- Buttons row -->
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="btn-primary" onclick="openNewBasketModal()" style="flex:1;">+ צור סל חדש</button>
+      <button class="btn-primary" onclick="openImportForBasket()" style="flex:1;background:#f0eaff;border-color:#c4aaee;color:#7c3aed;">📋 טעינת טקסט</button>
+    </div>
   </div>
 </div>
 
@@ -892,9 +901,9 @@
 
 <!-- IMPORT MODAL -->
 <div class="overlay" id="importOverlay" style="display:none" onclick="closeImportModal()">
-  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column;">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
     <button class="modal-close" onclick="closeImportModal()">✕</button>
-    <div class="modal-title">📋 טעינת רשימה</div>
+    <div class="modal-title" id="importModalTitle">📋 טעינת רשימה</div>
 
     <!-- Step 1: paste text -->
     <div id="importStep1">
@@ -906,24 +915,25 @@
     </div>
 
     <!-- Step 2: preview + destination -->
-    <div id="importStep2" style="display:none;overflow-y:auto;flex:1;">
+    <div id="importStep2" style="display:none;flex:1;min-height:0;flex-direction:column;">
       <!-- Destination selector -->
       <div class="form-label">לאן לטעון?</div>
-      <div class="import-dest-row">
+      <div class="import-dest-row" id="importDestRow">
         <button class="import-dest-btn selected" id="destBankBtn" onclick="setImportDest('bank')">
-          🗄️ בנק המצרכים בלבד
+          🗄️ בנק בלבד
         </button>
         <button class="import-dest-btn" id="destCartBtn" onclick="setImportDest('cart')">
           🛒 רשימה + בנק
         </button>
       </div>
 
-      <!-- Preview list -->
+      <!-- Scrollable preview list -->
       <div class="form-label">פריטים שזוהו — <span id="importSelectedCount">0</span> נבחרו:</div>
-      <div class="import-preview" id="importPreview"></div>
+      <div class="import-preview" id="importPreview" style="overflow-y:auto;flex:1;max-height:280px;"></div>
 
-      <div style="display:flex;gap:8px;">
-        <button class="btn-secondary" onclick="goBackImport()" style="flex:0 0 auto;">← חזור</button>
+      <!-- Action buttons - always visible at bottom -->
+      <div style="display:flex;gap:8px;padding-top:10px;flex-shrink:0;">
+        <button class="btn-secondary" onclick="goBackImport()" style="padding:9px 14px;flex-shrink:0;">← חזור</button>
         <button class="btn-primary" onclick="doImport()" style="flex:1;">✅ טען לאפליקציה</button>
       </div>
     </div>
@@ -1616,16 +1626,33 @@ function saveBasketEdit() {
 // ═══════════════════════════════════════════════════
 // IMPORT
 // ═══════════════════════════════════════════════════
-let importDest = "bank"; // "bank" | "cart"
+let importDest = "bank"; // "bank" | "cart" | "basket"
 let importItems = []; // [{name, qty, category, selected}]
+let importBasketTarget = null; // basket id when importing into basket
 
 function openImportModal() {
+  _openImport("📋 טעינת רשימה", "bank", null);
+}
+
+function openImportForBasket() {
+  closeBasketsModal();
+  _openImport("📋 טעינה לסל", "basket", null);
+}
+
+function _openImport(title, dest, basketId) {
+  document.getElementById("importModalTitle").textContent = title;
   document.getElementById("importTextarea").value = "";
   document.getElementById("importStep1").style.display = "block";
   document.getElementById("importStep2").style.display = "none";
   importItems = [];
-  importDest = "bank";
-  setImportDest("bank");
+  importDest = dest;
+  importBasketTarget = basketId;
+
+  // Show/hide dest buttons depending on mode
+  const destRow = document.getElementById("importDestRow");
+  destRow.style.display = dest === "basket" ? "none" : "";
+  if (dest !== "basket") setImportDest(dest);
+
   document.getElementById("importOverlay").style.display = "flex";
   setTimeout(() => document.getElementById("importTextarea").focus(), 100);
 }
@@ -1735,17 +1762,35 @@ function updateImportCount() {
 function doImport() {
   const selected = importItems.filter(i => i.selected);
   if (!selected.length) { showToast("לא נבחרו פריטים"); return; }
+
+  // Basket mode — add items to a new basket
+  if (importDest === "basket") {
+    const basketName = prompt("שם הסל החדש:", "סל מיובא") || "סל מיובא";
+    if (!state.baskets) state.baskets = [];
+    pushUndo();
+    const items = selected.map(i => i.name);
+    // Also add new items to bank
+    items.forEach(name => {
+      if (!state.bank.some(i=>i.name===name) && !state.cart.some(i=>i.name===name)) {
+        const cat = guessCategory(name)||"כללי";
+        state.bank.push({id:uid(), name, category:cat, autoClassified:true});
+      }
+    });
+    state.baskets.push({ id:uid(), name:basketName, items });
+    save(); renderBank(); closeImportModal();
+    showToast(`✅ סל "${basketName}" נוצר עם ${items.length} פריטים`);
+    setTimeout(openBasketsModal, 300);
+    return;
+  }
+
   pushUndo();
   let addedBank = 0, addedCart = 0;
-
   selected.forEach(item => {
     const inBank = state.bank.some(i => i.name === item.name);
     const inCart = state.cart.some(i => i.name === item.name);
-
     if (!inBank && !inCart) {
       const newItem = { id: uid(), name: item.name, category: item.category, autoClassified: true };
       if (importDest === "cart") {
-        // Add to bank AND move to cart
         state.cart.push({ ...newItem, note: "", qty: item.qty || 0, status: null });
         addedCart++;
       } else {
@@ -1753,15 +1798,12 @@ function doImport() {
         addedBank++;
       }
     } else if (importDest === "cart" && inBank && !inCart) {
-      // Move from bank to cart
       const bankIdx = state.bank.findIndex(i => i.name === item.name);
       const bankItem = state.bank.splice(bankIdx, 1)[0];
       state.cart.push({ ...bankItem, note: "", qty: item.qty || 0, status: null });
       addedCart++;
     }
-    // If already in cart — skip
   });
-
   save(); renderBank(); renderCart(); closeImportModal();
   const msg = importDest === "cart"
     ? `✅ ${addedCart} פריטים נוספו לרשימה`
@@ -1931,46 +1973,89 @@ function buildCartItem(item) {
   const wrap=document.createElement("div"); wrap.className="cart-item"+(item.status==="done"?" done":item.status==="cancel"?" cancel":"");
   const row=document.createElement("div"); row.className="cart-row";
 
-  // Name — flex:1 so it expands, anchored to the RIGHT in RTL
+  // Name — double-tap to edit
   const name=document.createElement("span"); name.className="cart-name"; name.textContent=item.name;
+  name.title="לחץ פעמיים לעריכה";
+  name.ondblclick = () => {
+    const inp = document.createElement("input");
+    inp.value = item.name;
+    inp.style.cssText = "font-size:13px;font-weight:500;font-family:inherit;width:100%;border:1.5px solid var(--blue-l);border-radius:6px;padding:1px 5px;color:var(--text);background:var(--bg);outline:none;";
+    name.textContent = ""; name.appendChild(inp); inp.focus(); inp.select();
+    const commit = () => {
+      const val = inp.value.trim();
+      if (val && val !== item.name) {
+        // Update in cart
+        const ci = state.cart.findIndex(i=>i.id===item.id);
+        if (ci!==-1) state.cart[ci].name = val;
+        // Update in bank too if exists
+        const bi = state.bank.findIndex(i=>i.id===item.id);
+        if (bi!==-1) state.bank[bi].name = val;
+        item.name = val; save();
+      }
+      name.textContent = item.name;
+    };
+    inp.onblur = commit;
+    inp.onkeydown = e => { if(e.key==="Enter") inp.blur(); if(e.key==="Escape"){inp.value=item.name;inp.blur();} };
+    inp.onclick = e => e.stopPropagation();
+  };
 
-  // ── QTY controls — must appear visually BETWEEN name and action buttons ──
-  // In RTL flex: DOM order determines right-to-left position.
-  // name(flex:1) is first = far right. qtyGroup second = just left of name. Then action buttons.
-  // Inside qtyGroup for RTL: [+] should be closest to name (rightmost), [−] furthest.
-  // DOM order inside group: [+, num, −] → RTL renders + rightmost (closest to name) ✓
+  // ── QTY controls ──
+  // Layout in RTL: [name(flex:1)] [−][num/input][+] [✏️][✓][✕][−remove]
+  // + is closest to action buttons (left), − is further right (closer to name).
+  // We always reserve space for all elements so + never jumps.
   const qty = item.qty || 0;
   const qtyGroup = document.createElement("div");
-  qtyGroup.style.cssText = "display:flex;align-items:center;gap:2px;flex-shrink:0;";
+  qtyGroup.style.cssText = "display:flex;align-items:center;gap:2px;flex-shrink:0;direction:ltr;";
+  // direction:ltr inside group so DOM order matches visual: [−][num][+]
+  // This way: − is on left, + is on right (closest to action buttons)
 
-  const btnQtyPlus  = document.createElement("button"); btnQtyPlus.className="btn-qty btn-qty-plus";  btnQtyPlus.textContent="+";
-  const qtyNum      = document.createElement("span");   qtyNum.className="qty-num";
   const btnQtyMinus = document.createElement("button"); btnQtyMinus.className="btn-qty btn-qty-minus"; btnQtyMinus.textContent="−";
+  const qtyNum = document.createElement("span"); qtyNum.className="qty-num"; qtyNum.style.cssText="min-width:18px;text-align:center;cursor:pointer;";
+  const qtyInput = document.createElement("input"); qtyInput.type="number"; qtyInput.min="1"; qtyInput.max="99";
+  qtyInput.style.cssText = "width:36px;font-size:13px;font-weight:700;color:var(--blue);text-align:center;border:1.5px solid var(--blue-l);border-radius:6px;padding:1px 3px;font-family:inherit;display:none;";
+  const btnQtyPlus = document.createElement("button"); btnQtyPlus.className="btn-qty btn-qty-plus"; btnQtyPlus.textContent="+";
 
-  qtyNum.textContent        = qty||"";
-  qtyNum.style.display      = qty>0?"inline":"none";
-  btnQtyMinus.style.display = qty>0?"flex":"none";
+  // Use visibility to reserve space — prevents jumping
+  btnQtyMinus.style.visibility = qty>0 ? "visible" : "hidden";
+  qtyNum.style.visibility      = qty>0 ? "visible" : "hidden";
+  qtyNum.textContent           = qty||"0";
 
-  // DOM: [+, num, −] → in RTL + is rightmost (next to name) ✓
-  qtyGroup.appendChild(btnQtyPlus);
-  qtyGroup.appendChild(qtyNum);
   qtyGroup.appendChild(btnQtyMinus);
+  qtyGroup.appendChild(qtyNum);
+  qtyGroup.appendChild(qtyInput);
+  qtyGroup.appendChild(btnQtyPlus);
+
+  // Click num to edit directly
+  qtyNum.onclick = () => {
+    qtyNum.style.display="none"; qtyInput.style.display="inline";
+    qtyInput.value = item.qty||""; qtyInput.focus(); qtyInput.select();
+  };
+  qtyInput.onblur = () => {
+    const v = parseInt(qtyInput.value)||0;
+    const idx=state.cart.findIndex(i=>i.id===item.id);
+    if(idx!==-1){ state.cart[idx].qty=item.qty=v; save(); }
+    qtyInput.style.display="none"; qtyNum.style.display="";
+    qtyNum.textContent=v||"0";
+    qtyNum.style.visibility=v>0?"visible":"hidden";
+    btnQtyMinus.style.visibility=v>0?"visible":"hidden";
+  };
+  qtyInput.onkeydown=e=>{ if(e.key==="Enter"||e.key==="Escape") qtyInput.blur(); };
 
   btnQtyPlus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
     const newQty=(state.cart[idx].qty||0)+1;
     state.cart[idx].qty=item.qty=newQty;
-    qtyNum.textContent=newQty; qtyNum.style.display="inline";
-    btnQtyMinus.style.display="flex";
+    qtyNum.textContent=newQty; qtyNum.style.visibility="visible";
+    btnQtyMinus.style.visibility="visible";
     save();
   };
   btnQtyMinus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
     const newQty=Math.max(0,(state.cart[idx].qty||0)-1);
     state.cart[idx].qty=item.qty=newQty;
-    qtyNum.textContent=newQty||"";
-    qtyNum.style.display=newQty>0?"inline":"none";
-    btnQtyMinus.style.display=newQty>0?"flex":"none";
+    qtyNum.textContent=newQty||"0";
+    qtyNum.style.visibility=newQty>0?"visible":"hidden";
+    btnQtyMinus.style.visibility=newQty>0?"visible":"hidden";
     save();
   };
 
@@ -2214,11 +2299,11 @@ function applyViewOrder(){
   if(state.viewOrder==="cartFirst"){
     main.insertBefore(cart,bank);
     if(divider) main.insertBefore(divider,bank);
-    if(btn) btn.textContent = "⇅ הצג בנק קודם";
+    if(btn) btn.textContent = "⇅ החלף תצוגה";
   } else {
     main.insertBefore(bank,cart);
     if(divider) main.insertBefore(divider,cart);
-    if(btn) btn.textContent = "⇅ הצג רשימה קודם";
+    if(btn) btn.textContent = "⇅ החלף תצוגה";
   }
 }
 function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartFirst":"bankFirst"; save(); applyViewOrder(); }
