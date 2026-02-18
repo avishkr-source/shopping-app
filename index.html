@@ -1304,91 +1304,60 @@ function buildCartItem(item) {
   const wrap=document.createElement("div"); wrap.className="cart-item"+(item.status==="done"?" done":item.status==="cancel"?" cancel":"");
   const row=document.createElement("div"); row.className="cart-row";
 
-  // Name
+  // ── Right side: name + qty (צמוד לשם) ──
+  const rightGroup = document.createElement("div");
+  rightGroup.style.cssText = "display:flex;align-items:center;gap:4px;flex:1;min-width:0;";
+
   const name=document.createElement("span"); name.className="cart-name"; name.textContent=item.name;
 
-  // ── QTY controls ──
   const qty = item.qty || 0;
-  const noteText = item.noteText || item.note || ""; // migrate legacy note
 
-  const qtyWrap = document.createElement("div"); qtyWrap.className="qty-wrap";
-
-  const btnQtyMinus = document.createElement("button"); btnQtyMinus.className="btn-qty btn-qty-minus"; btnQtyMinus.textContent="−";
-  const qtyNum = document.createElement("span"); qtyNum.className="qty-num"; qtyNum.textContent=qty||"";
   const btnQtyPlus = document.createElement("button"); btnQtyPlus.className="btn-qty btn-qty-plus"; btnQtyPlus.textContent="+";
+  const qtyNum = document.createElement("span"); qtyNum.className="qty-num";
+  const btnQtyMinus = document.createElement("button"); btnQtyMinus.className="btn-qty btn-qty-minus"; btnQtyMinus.textContent="−";
 
-  // Show/hide minus+number based on qty
-  btnQtyMinus.style.display = qty > 0 ? "flex" : "none";
+  qtyNum.textContent = qty || "";
   qtyNum.style.display = qty > 0 ? "inline" : "none";
+  btnQtyMinus.style.display = qty > 0 ? "flex" : "none";
 
   btnQtyPlus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
     const newQty = (state.cart[idx].qty||0) + 1;
-    state.cart[idx].qty = newQty;
-    state.cart[idx].noteText = state.cart[idx].noteText || state.cart[idx].note || "";
-    state.cart[idx].note = buildNoteDisplay(newQty, state.cart[idx].noteText);
-    item.qty = newQty; item.noteText = state.cart[idx].noteText;
+    state.cart[idx].qty = item.qty = newQty;
     qtyNum.textContent = newQty; qtyNum.style.display="inline";
     btnQtyMinus.style.display="flex";
-    updateNoteChip(newQty, item.noteText);
     save();
   };
   btnQtyMinus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
-    const newQty = Math.max(0, (state.cart[idx].qty||0) - 1);
-    state.cart[idx].qty = newQty;
-    state.cart[idx].note = buildNoteDisplay(newQty, state.cart[idx].noteText||"");
-    item.qty = newQty;
-    qtyNum.textContent = newQty||""; qtyNum.style.display = newQty>0?"inline":"none";
+    const newQty = Math.max(0,(state.cart[idx].qty||0)-1);
+    state.cart[idx].qty = item.qty = newQty;
+    qtyNum.textContent = newQty||"";
+    qtyNum.style.display = newQty>0?"inline":"none";
     btnQtyMinus.style.display = newQty>0?"flex":"none";
-    updateNoteChip(newQty, item.noteText||"");
     save();
   };
 
-  qtyWrap.appendChild(btnQtyMinus);
-  qtyWrap.appendChild(qtyNum);
-  qtyWrap.appendChild(btnQtyPlus);
+  // name → + → [num] → [-]
+  rightGroup.appendChild(name);
+  rightGroup.appendChild(btnQtyPlus);
+  rightGroup.appendChild(qtyNum);
+  rightGroup.appendChild(btnQtyMinus);
 
-  // ── NOTE chip + input ──
+  // ── Left side: note + action buttons ──
   const noteDisplay=document.createElement("span"); noteDisplay.className="note-text-display";
-  const combinedNote = buildNoteDisplay(qty, noteText);
-  noteDisplay.style.display = combinedNote ? "inline-block" : "none";
-  noteDisplay.textContent = combinedNote;
-
-  function updateNoteChip(q, t) {
-    const combined = buildNoteDisplay(q, t);
-    noteDisplay.textContent = combined;
-    noteDisplay.style.display = combined ? "inline-block" : "none";
-  }
-
+  noteDisplay.style.display=item.note?"inline-block":"none"; noteDisplay.textContent=item.note||"";
   const noteToggle=document.createElement("button"); noteToggle.className="note-toggle"; noteToggle.textContent="✏️";
   const noteWrap=document.createElement("div"); noteWrap.className="cart-note-wrap";
   const noteInput=document.createElement("input"); noteInput.className="cart-note-input";
-  noteInput.placeholder="הערה / כמות..."; noteInput.type="text";
-  noteInput.value = combinedNote; // show full combined in edit field
+  noteInput.placeholder="הערה..."; noteInput.type="text"; noteInput.value=item.note||"";
 
-  function openNoteEdit(){
-    noteDisplay.style.display="none";
-    noteInput.value = buildNoteDisplay(item.qty||0, item.noteText||"");
-    noteWrap.classList.add("open"); noteInput.focus(); noteInput.select();
-  }
+  function openNoteEdit(){ noteDisplay.style.display="none"; noteWrap.classList.add("open"); noteInput.focus(); noteInput.select(); }
   function closeNoteEdit(){
-    const val=noteInput.value.trim();
-    noteWrap.classList.remove("open");
-    // Parse: leading number = qty, rest = noteText
-    const parsed = parseNoteInput(val);
+    const val=noteInput.value.trim(); noteWrap.classList.remove("open");
     const idx=state.cart.findIndex(i=>i.id===item.id);
-    if(idx!==-1){
-      state.cart[idx].qty = parsed.qty;
-      state.cart[idx].noteText = parsed.text;
-      state.cart[idx].note = buildNoteDisplay(parsed.qty, parsed.text);
-      item.qty = parsed.qty; item.noteText = parsed.text;
-    }
-    qtyNum.textContent = parsed.qty||"";
-    qtyNum.style.display = parsed.qty>0?"inline":"none";
-    btnQtyMinus.style.display = parsed.qty>0?"flex":"none";
-    updateNoteChip(parsed.qty, parsed.text);
-    save();
+    if(idx!==-1){ state.cart[idx].note=val; item.note=val; save(); }
+    noteDisplay.textContent=val; noteDisplay.style.display=val?"inline-block":"none";
   }
   noteToggle.onclick=openNoteEdit; noteDisplay.onclick=openNoteEdit;
   noteInput.onblur=closeNoteEdit;
@@ -1398,26 +1367,12 @@ function buildCartItem(item) {
   const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
   const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
 
-  row.appendChild(name);
-  row.appendChild(qtyWrap);
+  row.appendChild(rightGroup);
   row.appendChild(noteDisplay);
   row.appendChild(noteToggle);
   row.appendChild(btnCheck); row.appendChild(btnX); row.appendChild(btnMinus);
   noteWrap.appendChild(noteInput); wrap.appendChild(row); wrap.appendChild(noteWrap);
   return wrap;
-}
-
-// qty helpers
-function buildNoteDisplay(qty, text) {
-  if (qty > 0 && text) return `${qty} ${text}`;
-  if (qty > 0) return `${qty}`;
-  return text || "";
-}
-function parseNoteInput(val) {
-  if (!val) return { qty:0, text:"" };
-  const m = val.match(/^(\d+)\s*(.*)/);
-  if (m) return { qty: parseInt(m[1]), text: m[2].trim() };
-  return { qty: 0, text: val };
 }
 
 // ═══════════════════════════════════════════════════
