@@ -287,8 +287,9 @@
   .cart-note-wrap.open { max-height:44px; padding:0 6px 5px; }
   .note-text-display {
     font-size:10px; color:var(--text-dim); background:var(--bg3); border-radius:6px;
-    padding:2px 7px; max-width:90px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    flex-shrink:0; cursor:pointer; border:1px solid var(--border);
+    padding:2px 7px; cursor:pointer; border:1px solid var(--border);
+    white-space:normal; word-break:break-word;
+    display:block; margin:0 6px 4px;
   }
   .cart-note-input {
     display:block; width:100%; background:var(--bg); border:1.5px solid var(--border);
@@ -512,6 +513,14 @@
   .cat-add-bank-input::placeholder { color:var(--text-dim); }
   .btn-add-bank { flex-shrink:0; background:var(--blue); border:none; border-radius:9px; color:#fff; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s; }
   .btn-add-bank:active { background:#2f5ab8; transform:scale(.96); }
+  .btn-notify {
+    background:linear-gradient(135deg,#3b6fd4,#6b94e8); border:none; border-radius:10px;
+    color:#fff; padding:8px 14px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+    box-shadow:0 3px 10px rgba(59,111,212,.3); display:flex; align-items:center; gap:5px;
+    margin:10px auto 0; width:100%;  justify-content:center;
+  }
+  .btn-notify:active { transform:scale(.96); }
   ::-webkit-scrollbar-thumb { background:#c0ccee; border-radius:4px; }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes fadeUp  { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
@@ -627,6 +636,9 @@
       <button class="btn-finish" id="finishBtn" onclick="handleFinish()" style="display:none">✅ סיימתי</button>
     </div>
     <div id="cartList"></div>
+    <button class="btn-notify" id="notifyBtn" onclick="sendUpdateNotification()" style="display:none">
+      🔔 עדכנתי את הרשימה
+    </button>
   </div>
 </div>
 
@@ -891,6 +903,9 @@ async function saveToFirestore() {
 }
 
 function applyRemoteData(data) {
+  // Skip remote updates if we have a pending local save (prevents flicker and lost items)
+  if (saveTimer) return;
+
   const incoming = JSON.stringify({
     bank: data.bank, cart: data.cart, categories: data.categories,
     bankSort: data.bankSort, catSort: data.catSort, viewOrder: data.viewOrder
@@ -1069,6 +1084,29 @@ function leaveList() {
   setLobbyStatus("");
 }
 
+// ── NOTIFY ────────────────────────────────────────
+async function sendUpdateNotification() {
+  if (!currentListId) return;
+  const btn = document.getElementById("notifyBtn");
+  btn.disabled = true; btn.textContent = "🔔 שולח...";
+  try {
+    await db.collection("lists").doc(currentListId).set({
+      notification: {
+        message: "🛒 הרשימה עודכנה!",
+        by: auth.currentUser?.uid || "unknown",
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      }
+    }, { merge: true });
+    btn.textContent = "✅ נשלח!";
+    setTimeout(() => { btn.textContent = "🔔 עדכנתי את הרשימה"; btn.disabled = false; }, 2500);
+  } catch(e) {
+    btn.textContent = "🔔 עדכנתי את הרשימה"; btn.disabled = false;
+    showToast("שגיאה בשליחה");
+  }
+}
+
+let lastNotificationAt = null;
+
 // ── FIRESTORE SUBSCRIPTION ────────────────────────
 function subscribeToList(code) {
   if (firestoreUnsub) firestoreUnsub();
@@ -1076,7 +1114,24 @@ function subscribeToList(code) {
   firestoreUnsub = db.collection("lists").doc(code).onSnapshot(
     snap => {
       if (!snap.exists) { showToast("הרשימה נמחקה"); leaveList(); return; }
-      applyRemoteData(snap.data());
+      const data = snap.data();
+
+      // Show notify button only when cart has items
+      const notifyBtn = document.getElementById("notifyBtn");
+      if (notifyBtn) notifyBtn.style.display = (data.cart && data.cart.length > 0) ? "flex" : "none";
+
+      // Check for notifications from others
+      if (data.notification && data.notification.at) {
+        const notifAt = data.notification.at.toMillis ? data.notification.at.toMillis() : 0;
+        const myUid = auth.currentUser?.uid;
+        if (lastNotificationAt && notifAt > lastNotificationAt && data.notification.by !== myUid) {
+          showToast("🔔 " + (data.notification.message || "הרשימה עודכנה!"));
+        }
+        if (!lastNotificationAt) lastNotificationAt = notifAt; // init
+        else lastNotificationAt = Math.max(lastNotificationAt, notifAt);
+      }
+
+      applyRemoteData(data);
     },
     err => { console.error(err); setSyncDot("error"); showToast("שגיאת חיבור"); }
   );
@@ -1290,6 +1345,8 @@ function renderCart() {
   const list = document.getElementById("cartList");
   document.getElementById("cartCount").textContent = `${state.cart.length} פריטים`;
   document.getElementById("finishBtn").style.display = state.cart.length?"block":"none";
+  const notifyBtn = document.getElementById("notifyBtn");
+  if (notifyBtn) notifyBtn.style.display = state.cart.length ? "flex" : "none";
   if (!state.cart.length) { list.innerHTML='<div class="empty">לחץ על פריט בבנק כדי להוסיף לרשימה<span class="empty-icon">🛒</span></div>'; return; }
   const notDone=state.cart.filter(i=>i.status!=="done"), done=state.cart.filter(i=>i.status==="done");
   const groups={};
@@ -1304,74 +1361,90 @@ function buildCartItem(item) {
   const wrap=document.createElement("div"); wrap.className="cart-item"+(item.status==="done"?" done":item.status==="cancel"?" cancel":"");
   const row=document.createElement("div"); row.className="cart-row";
 
-  // ── Right side: name + qty (צמוד לשם) ──
-  const rightGroup = document.createElement("div");
-  rightGroup.style.cssText = "display:flex;align-items:center;gap:4px;flex:1;min-width:0;";
-
+  // Name — flex:1 so it expands, anchored to the RIGHT in RTL
   const name=document.createElement("span"); name.className="cart-name"; name.textContent=item.name;
 
+  // ── QTY controls — compact group, sits immediately to the LEFT of name in RTL ──
   const qty = item.qty || 0;
+  const qtyGroup = document.createElement("div");
+  qtyGroup.style.cssText = "display:flex;align-items:center;gap:2px;flex-shrink:0;";
 
-  const btnQtyPlus = document.createElement("button"); btnQtyPlus.className="btn-qty btn-qty-plus"; btnQtyPlus.textContent="+";
-  const qtyNum = document.createElement("span"); qtyNum.className="qty-num";
+  const btnQtyPlus  = document.createElement("button"); btnQtyPlus.className="btn-qty btn-qty-plus";  btnQtyPlus.textContent="+";
+  const qtyNum      = document.createElement("span");   qtyNum.className="qty-num";
   const btnQtyMinus = document.createElement("button"); btnQtyMinus.className="btn-qty btn-qty-minus"; btnQtyMinus.textContent="−";
 
-  qtyNum.textContent = qty || "";
-  qtyNum.style.display = qty > 0 ? "inline" : "none";
-  btnQtyMinus.style.display = qty > 0 ? "flex" : "none";
+  qtyNum.textContent      = qty||"";
+  qtyNum.style.display    = qty>0?"inline":"none";
+  btnQtyMinus.style.display = qty>0?"flex":"none";
+
+  // In RTL flex, DOM order: [−, num, +] renders visually as [+][num][−] from left-to-right within group
+  // We want [+] closest to name, [−] further left: DOM order = [−, num, +]
+  qtyGroup.appendChild(btnQtyMinus);
+  qtyGroup.appendChild(qtyNum);
+  qtyGroup.appendChild(btnQtyPlus);
 
   btnQtyPlus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
-    const newQty = (state.cart[idx].qty||0) + 1;
-    state.cart[idx].qty = item.qty = newQty;
-    qtyNum.textContent = newQty; qtyNum.style.display="inline";
+    const newQty=(state.cart[idx].qty||0)+1;
+    state.cart[idx].qty=item.qty=newQty;
+    qtyNum.textContent=newQty; qtyNum.style.display="inline";
     btnQtyMinus.style.display="flex";
     save();
   };
   btnQtyMinus.onclick = () => {
     const idx=state.cart.findIndex(i=>i.id===item.id); if(idx===-1)return;
-    const newQty = Math.max(0,(state.cart[idx].qty||0)-1);
-    state.cart[idx].qty = item.qty = newQty;
-    qtyNum.textContent = newQty||"";
-    qtyNum.style.display = newQty>0?"inline":"none";
-    btnQtyMinus.style.display = newQty>0?"flex":"none";
+    const newQty=Math.max(0,(state.cart[idx].qty||0)-1);
+    state.cart[idx].qty=item.qty=newQty;
+    qtyNum.textContent=newQty||"";
+    qtyNum.style.display=newQty>0?"inline":"none";
+    btnQtyMinus.style.display=newQty>0?"flex":"none";
     save();
   };
 
-  // name → + → [num] → [-]
-  rightGroup.appendChild(name);
-  rightGroup.appendChild(btnQtyPlus);
-  rightGroup.appendChild(qtyNum);
-  rightGroup.appendChild(btnQtyMinus);
-
-  // ── Left side: note + action buttons ──
-  const noteDisplay=document.createElement("span"); noteDisplay.className="note-text-display";
-  noteDisplay.style.display=item.note?"inline-block":"none"; noteDisplay.textContent=item.note||"";
+  // ── Action buttons (left side) ──
   const noteToggle=document.createElement("button"); noteToggle.className="note-toggle"; noteToggle.textContent="✏️";
-  const noteWrap=document.createElement("div"); noteWrap.className="cart-note-wrap";
-  const noteInput=document.createElement("input"); noteInput.className="cart-note-input";
-  noteInput.placeholder="הערה..."; noteInput.type="text"; noteInput.value=item.note||"";
-
-  function openNoteEdit(){ noteDisplay.style.display="none"; noteWrap.classList.add("open"); noteInput.focus(); noteInput.select(); }
-  function closeNoteEdit(){
-    const val=noteInput.value.trim(); noteWrap.classList.remove("open");
-    const idx=state.cart.findIndex(i=>i.id===item.id);
-    if(idx!==-1){ state.cart[idx].note=val; item.note=val; save(); }
-    noteDisplay.textContent=val; noteDisplay.style.display=val?"inline-block":"none";
-  }
-  noteToggle.onclick=openNoteEdit; noteDisplay.onclick=openNoteEdit;
-  noteInput.onblur=closeNoteEdit;
-  noteInput.onkeydown=e=>{ if(e.key==="Enter"||e.key==="Escape")noteInput.blur(); };
-
   const btnCheck=document.createElement("button"); btnCheck.className="btn-icon btn-check"+(item.status==="done"?" active":""); btnCheck.textContent="✓"; btnCheck.onclick=()=>setCartStatus(item.id,"done");
   const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
   const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
 
-  row.appendChild(rightGroup);
-  row.appendChild(noteDisplay);
+  // Row: RIGHT→LEFT in RTL: [name(flex1)] [qtyGroup] [✏️] [✓] [✕] [−]
+  row.appendChild(name);
+  row.appendChild(qtyGroup);
   row.appendChild(noteToggle);
-  row.appendChild(btnCheck); row.appendChild(btnX); row.appendChild(btnMinus);
-  noteWrap.appendChild(noteInput); wrap.appendChild(row); wrap.appendChild(noteWrap);
+  row.appendChild(btnCheck);
+  row.appendChild(btnX);
+  row.appendChild(btnMinus);
+
+  // ── Note: BELOW the row, full width ──
+  const noteDisplay=document.createElement("div");
+  noteDisplay.className="note-text-display";
+  noteDisplay.style.display=item.note?"block":"none";
+  noteDisplay.textContent=item.note||"";
+  noteDisplay.onclick=openNoteEdit;
+
+  const noteWrap=document.createElement("div"); noteWrap.className="cart-note-wrap";
+  const noteInput=document.createElement("input"); noteInput.className="cart-note-input";
+  noteInput.placeholder="הערה..."; noteInput.type="text"; noteInput.value=item.note||"";
+
+  function openNoteEdit(){
+    noteDisplay.style.display="none";
+    noteWrap.classList.add("open"); noteInput.focus(); noteInput.select();
+  }
+  function closeNoteEdit(){
+    const val=noteInput.value.trim();
+    noteWrap.classList.remove("open");
+    const idx=state.cart.findIndex(i=>i.id===item.id);
+    if(idx!==-1){ state.cart[idx].note=val; item.note=val; save(); }
+    noteDisplay.textContent=val; noteDisplay.style.display=val?"block":"none";
+  }
+  noteToggle.onclick=openNoteEdit;
+  noteInput.onblur=closeNoteEdit;
+  noteInput.onkeydown=e=>{ if(e.key==="Enter"||e.key==="Escape")noteInput.blur(); };
+
+  noteWrap.appendChild(noteInput);
+  wrap.appendChild(row);
+  wrap.appendChild(noteDisplay);
+  wrap.appendChild(noteWrap);
   return wrap;
 }
 
