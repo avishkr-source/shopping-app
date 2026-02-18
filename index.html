@@ -87,7 +87,25 @@
   .header-icon { width:28px; height:28px; border-radius:7px; object-fit:contain; flex-shrink:0; }
   .header-title-wrap { flex:1; min-width:0; }
   .header-title { font-size:16px; font-weight:700; display:flex; align-items:center; gap:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .header-list-name { overflow:hidden; text-overflow:ellipsis; }
+  .header-list-name {
+    overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+    border-bottom:1.5px dashed transparent; transition:border-color .15s; padding-bottom:1px;
+  }
+  .header-list-name:hover { border-bottom-color:var(--blue-l); }
+  .header-list-name-input {
+    font-size:16px; font-weight:700; font-family:inherit; color:var(--text);
+    background:var(--bg); border:1.5px solid var(--blue-l); border-radius:7px;
+    padding:1px 7px; outline:none; width:160px; max-width:55vw;
+  }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    display:flex; align-items:center; gap:10px;
+    margin:6px 0 16px;
+  }
+  .section-divider-line { flex:1; height:2px; background:linear-gradient(90deg, var(--border), transparent); }
+  .section-divider-line.flip { background:linear-gradient(90deg, transparent, var(--border)); }
+
   .sync-dot {
     width:7px; height:7px; border-radius:50%; flex-shrink:0;
     background:#ccc; transition:background .3s;
@@ -470,9 +488,10 @@
     <div class="lobby-sub">שתפו רשימה עם בני המשפחה בזמן אמת</div>
 
     <div class="lobby-section-title">יצירת רשימה חדשה</div>
-    <input class="lobby-input" id="listNameInput" placeholder="שם הרשימה (לדוגמה: המשפחה שלנו)"
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:5px;">הרשימה של... (עד 16 תווים)</div>
+    <input class="lobby-input" id="listNameInput" placeholder="לדוגמה: המשפחה שלנו"
       style="letter-spacing:0; font-weight:500; font-size:14px; text-align:right; margin-bottom:8px;"
-      maxlength="30" onkeydown="if(event.key==='Enter') createList()">
+      maxlength="16" onkeydown="if(event.key==='Enter') createList()">
     <button class="btn-lobby-primary" onclick="createList()">✨ צור רשימה חדשה</button>
 
     <div class="lobby-divider">
@@ -497,18 +516,18 @@
     <img class="header-icon" id="headerIcon" src="" alt="">
     <div class="header-title-wrap">
       <div class="header-title">
-        <span class="header-list-name" id="headerListName">רשימת קניות</span>
+        <span class="header-list-name" id="headerListName" onclick="startEditListName()" title="לחץ לעריכת השם"></span>
         <div class="sync-dot" id="syncDot" title="מצב חיבור"></div>
       </div>
       <div class="header-sub" id="headerSub">טוען...</div>
     </div>
+    <button class="btn-undo" onclick="openHelp()" title="הוראות שימוש" style="margin-right:auto;flex-shrink:0;">❓</button>
   </div>
   <div class="header-row2">
     <button class="btn-cat" onclick="openCatModal()">📂 קטגוריות</button>
     <button class="btn-share" onclick="openShareModal()">🔗 שיתוף</button>
-    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ בנק קודם</button>
+    <button class="btn-view" id="viewToggleBtn" onclick="toggleViewOrder()">⇅ שנה סדר</button>
     <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>↩ בטל</button>
-    <button class="btn-undo" onclick="openHelp()" title="הוראות שימוש">❓</button>
   </div>
 </div>
 
@@ -544,6 +563,12 @@
       <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
     </div>
     <div class="bank-grid" id="bankGrid"></div>
+  </div>
+
+  <div class="section-divider">
+    <div class="section-divider-line flip"></div>
+    <span style="font-size:18px;">🛒</span>
+    <div class="section-divider-line"></div>
   </div>
 
   <div id="sectionCart">
@@ -863,7 +888,7 @@ function setLobbyStatus(msg, isError=false) {
 
 async function createList() {
   const nameInput = document.getElementById("listNameInput").value.trim();
-  const listName = nameInput || "רשימת קניות";
+  const listName = nameInput ? `הרשימה של ${nameInput}` : "רשימת קניות";
   setLobbyStatus("יוצר רשימה...");
   try {
     await ensureAuth();
@@ -954,6 +979,33 @@ function ensureAuth() {
     if (auth.currentUser) { resolve(); return; }
     auth.signInAnonymously().then(resolve).catch(reject);
   });
+}
+
+// ── EDIT LIST NAME ────────────────────────────────
+function startEditListName() {
+  const nameEl = document.getElementById("headerListName");
+  if (!nameEl || nameEl.querySelector("input")) return;
+  const current = state.listName || "רשימת קניות";
+  const inp = document.createElement("input");
+  inp.className = "header-list-name-input";
+  inp.value = current;
+  inp.maxLength = 30; // full name including "הרשימה של "
+  nameEl.textContent = "";
+  nameEl.appendChild(inp);
+  inp.focus(); inp.select();
+  const finish = () => {
+    const val = inp.value.trim();
+    if (val && val !== current) {
+      state.listName = val;
+      save();
+      showToast("השם עודכן ✅");
+    }
+    nameEl.textContent = state.listName || "רשימת קניות";
+    updateHeader();
+  };
+  inp.onblur = finish;
+  inp.onkeydown = e => { if(e.key==="Enter") inp.blur(); if(e.key==="Escape"){inp.value=current;inp.blur();} };
+  inp.onclick = e => e.stopPropagation();
 }
 
 // ── WELCOME & HELP ───────────────────────────────
@@ -1313,7 +1365,14 @@ function renderCatItems(){
       item.category=sel.value; save(); renderBank(); renderCart();
       if(state.catSort==="cat")renderCatItems();
     };
-    row.appendChild(sel); el.appendChild(row);
+    row.appendChild(sel);
+    // Delete button — bank items only
+    if(item._src==="bank"){
+      const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️"; btnDel.title="הסר מהבנק";
+      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderCatItems(); showToast("פריט הוסר"); };
+      row.appendChild(btnDel);
+    }
+    el.appendChild(row);
   });
 }
 
@@ -1328,10 +1387,16 @@ function startEditCatItemName(item,row,namePart,sel){
 function applyViewOrder(){
   const main=document.querySelector(".main");
   const bank=document.getElementById("sectionBank");
+  const divider=document.querySelector(".section-divider");
   const cart=document.getElementById("sectionCart");
   if(!main||!bank||!cart)return;
-  if(state.viewOrder==="cartFirst"){ main.insertBefore(cart,bank); document.getElementById("viewToggleBtn").textContent="⇅ רשימה קודם"; }
-  else{ main.insertBefore(bank,cart); document.getElementById("viewToggleBtn").textContent="⇅ בנק קודם"; }
+  if(state.viewOrder==="cartFirst"){
+    main.insertBefore(cart,bank);
+    if(divider) main.insertBefore(divider,bank);
+  } else {
+    main.insertBefore(bank,cart);
+    if(divider) main.insertBefore(divider,cart);
+  }
 }
 function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartFirst":"bankFirst"; save(); applyViewOrder(); }
 
