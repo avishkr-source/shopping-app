@@ -709,17 +709,31 @@
       <span class="sec-title">רשימת קניות</span>
       <span class="sec-count cnt-green" id="cartCount">0 פריטים</span>
       <div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;flex-shrink:0;" id="cartStats"></div>
+      <div style="position:relative;flex-shrink:0;" id="cartFilterWrap">
+        <button id="cartFilterBtn" onclick="toggleCartFilterMenu(event)" style="display:none;background:var(--bg3);border:1.5px solid var(--border);border-radius:20px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;">🔽 סינון</button>
+        <div id="cartFilterMenu" style="display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:500;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px var(--shadow);min-width:170px;padding:6px;animation:slideIn .12s ease;"></div>
+      </div>
+      <button id="resetCartBtn" onclick="confirmResetCart()" style="display:none;background:var(--red-l);border:1.5px solid #f5b8b8;border-radius:20px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--red);cursor:pointer;white-space:nowrap;font-family:inherit;flex-shrink:0;">🗑️ איפוס</button>
       <button class="btn-finish" id="finishBtn" onclick="handleFinish()" style="display:none">✅ סיימתי</button>
     </div>
     <div id="cartList"></div>
-    <div style="position:relative;display:inline-block;margin-bottom:6px;" id="cartFilterWrap">
-      <button id="cartFilterBtn" onclick="toggleCartFilterMenu(event)" style="display:none;background:var(--bg3);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;">🔽 סינון</button>
-      <div id="cartFilterMenu" style="display:none;position:absolute;top:calc(100% + 5px);right:0;z-index:500;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px var(--shadow);min-width:170px;padding:6px;animation:slideIn .12s ease;"></div>
-    </div>
     <button class="btn-notify" id="notifyBtn" onclick="sendUpdateNotification()" style="display:none">
       <span id="notifyBtnText">🔔 עדכנתי את הרשימה</span>
       <span id="notifyDots" style="display:flex;gap:4px;align-items:center;margin-right:6px;"></span>
     </button>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="overlay" id="confirmOverlay" style="display:none" onclick="closeConfirm()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:340px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;" id="confirmIcon">⚠️</div>
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px;" id="confirmTitle"></div>
+    <div style="font-size:13px;color:var(--text-mid);margin-bottom:20px;line-height:1.6;" id="confirmMsg"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" onclick="closeConfirm()" style="flex:1;margin-top:0;">ביטול</button>
+      <button id="confirmOkBtn" style="flex:1;padding:10px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--red);color:#fff;transition:all .15s;">אישור</button>
+    </div>
   </div>
 </div>
 
@@ -1159,7 +1173,7 @@ function renderSavedLists() {
     info.appendChild(name); info.appendChild(code);
     const del = document.createElement("button"); del.className = "saved-list-del"; del.textContent = "✕";
     del.title = "הסר מהרשימות שלי";
-    del.onclick = e => { e.stopPropagation(); removeFromSavedLists(l.code); };
+    del.onclick = e => { e.stopPropagation(); confirmRemoveFromSavedLists(l.code); };
     row.appendChild(icon); row.appendChild(info); row.appendChild(del);
     el.appendChild(row);
   });
@@ -2139,6 +2153,8 @@ function renderCart() {
   }
   document.getElementById("cartCount").textContent = `${state.cart.length} פריטים`;
   document.getElementById("finishBtn").style.display = state.cart.length?"block":"none";
+  const resetBtn = document.getElementById("resetCartBtn");
+  if (resetBtn) resetBtn.style.display = state.cart.length ? "inline-block" : "none";
   const notifyBtn = document.getElementById("notifyBtn");
   if (notifyBtn) notifyBtn.style.display = state.cart.length ? "flex" : "none";
   if (filterBtn) filterBtn.style.display = state.cart.length ? "inline-block" : "none";
@@ -2253,7 +2269,7 @@ function buildCartItem(item) {
   noteToggle.style.marginRight = "24px";
   const btnCheck=document.createElement("button"); btnCheck.className="btn-icon btn-check"+(item.status==="done"?" active":""); btnCheck.textContent="✓"; btnCheck.onclick=()=>setCartStatus(item.id,"done");
   const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
-  const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
+  const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>confirmRemoveFromCart(item.id);
 
   // Row: RIGHT→LEFT in RTL: [name(flex1)] [qtyGroup] [✏️] [✓] [✕] [−]
   row.appendChild(name);
@@ -2334,6 +2350,54 @@ function moveToCart(item) {
   state.cart.push({...item, note:"", noteText:"", qty:0, status:null});
   save(); renderBank(); renderCart();
 }
+// ── CONFIRM DIALOG ────────────────────────────────
+function showConfirm({ icon="⚠️", title, msg, okLabel="אישור", okColor="var(--red)", onOk }) {
+  document.getElementById("confirmIcon").textContent = icon;
+  document.getElementById("confirmTitle").textContent = title;
+  document.getElementById("confirmMsg").textContent = msg;
+  const btn = document.getElementById("confirmOkBtn");
+  btn.textContent = okLabel;
+  btn.style.background = okColor;
+  btn.onclick = () => { closeConfirm(); onOk(); };
+  document.getElementById("confirmOverlay").style.display = "flex";
+}
+function closeConfirm() { document.getElementById("confirmOverlay").style.display = "none"; }
+
+function confirmResetCart() {
+  showConfirm({
+    icon: "🗑️", title: "איפוס רשימה",
+    msg: `כל ${state.cart.length} הפריטים ברשימה יוחזרו לבנק. פעולה זו לא ניתנת לביטול.`,
+    okLabel: "אפס רשימה",
+    onOk: doResetCart
+  });
+}
+function doResetCart() {
+  pushUndo();
+  state.cart.forEach(item => { if(!state.bank.some(b=>b.id===item.id)) state.bank.push({id:item.id,name:item.name,category:item.category}); });
+  state.cart = [];
+  save(); renderBank(); renderCart();
+  showToast("✅ הרשימה אופסה");
+}
+
+function confirmRemoveFromCart(id) {
+  const item = state.cart.find(i=>i.id===id); if(!item) return;
+  showConfirm({
+    icon: "↩️", title: "הסרה מהרשימה",
+    msg: `"${item.name}" יוחזר לבנק הפריטים.`,
+    okLabel: "הסר", okColor: "var(--blue)",
+    onOk: () => removeFromCart(id)
+  });
+}
+
+function confirmRemoveFromSavedLists(code) {
+  showConfirm({
+    icon: "🗑️", title: "הסרת רשימה",
+    msg: "הרשימה תוסר מהמכשיר שלך. הנתונים ישמרו ותוכל להצטרף שוב עם הקוד.",
+    okLabel: "הסר", okColor: "var(--red)",
+    onOk: () => removeFromSavedLists(code)
+  });
+}
+
 function removeFromCart(id) {
   pushUndo(); const item=state.cart.find(i=>i.id===id); if(!item)return;
   state.cart=state.cart.filter(i=>i.id!==id); state.bank.push({id:item.id,name:item.name,category:item.category});
@@ -2411,8 +2475,25 @@ function renderCatModal(){ renderCatTags(); renderCatItems(); }
 
 function renderCatTags(){
   const el=document.getElementById("catTagsList"); el.innerHTML="";
+  let dragSrc=null;
   state.categories.forEach(cat=>{
     const div=document.createElement("div"); div.className="cat-tag";
+    div.draggable=true;
+    div.style.cursor="grab";
+    div.dataset.cat=cat;
+
+    div.ondragstart=e=>{ dragSrc=cat; div.style.opacity=".4"; e.dataTransfer.effectAllowed="move"; };
+    div.ondragend=()=>{ div.style.opacity="1"; document.querySelectorAll(".cat-tag").forEach(d=>d.style.background=""); };
+    div.ondragover=e=>{ e.preventDefault(); div.style.background="var(--blue-pale)"; };
+    div.ondragleave=()=>{ div.style.background=""; };
+    div.ondrop=e=>{ e.preventDefault(); div.style.background="";
+      if(dragSrc===cat) return;
+      const from=state.categories.indexOf(dragSrc), to=state.categories.indexOf(cat);
+      if(from===-1||to===-1) return;
+      state.categories.splice(from,1); state.categories.splice(to,0,dragSrc);
+      save(); renderCatTags();
+    };
+
     if(editingCatTag===cat){
       const inp=document.createElement("input"); inp.className="cat-tag-edit-input"; inp.value=cat;
       inp.onblur=()=>saveCatTagName(cat,inp.value);
@@ -2427,6 +2508,8 @@ function renderCatTags(){
     }
     el.appendChild(div);
   });
+  // hint
+  const hint=document.createElement("div"); hint.style.cssText="font-size:10px;color:var(--text-dim);text-align:center;margin-top:4px;"; hint.textContent="גרור קטגוריות לשינוי סדר"; el.appendChild(hint);
 }
 function saveCatTagName(oldCat,newName){
   editingCatTag=null; const t=newName.trim();
