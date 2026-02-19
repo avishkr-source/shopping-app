@@ -725,7 +725,7 @@
 </div>
 
 <!-- CONFIRM DIALOG -->
-<div class="overlay" id="confirmOverlay" style="display:none" onclick="closeConfirm()">
+<div class="overlay" id="confirmOverlay" style="display:none;z-index:1100;" onclick="closeConfirm()">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:340px;text-align:center;">
     <div style="font-size:36px;margin-bottom:8px;" id="confirmIcon">⚠️</div>
     <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px;" id="confirmTitle"></div>
@@ -796,7 +796,7 @@
       <button class="btn-sort inactive" id="sortCatBtn"   onclick="setCatSort('cat')">קטגוריות</button>
     </div>
     <div class="cats-section">
-      <div class="cats-sec-title"><span>קטגוריות</span></div>
+      <div class="cats-sec-title"><span>קטגוריות</span><span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-right:6px;">גרור לשינוי סדר</span></div>
       <div class="cats-tags" id="catTagsList"></div>
       <div class="new-cat-row">
         <input class="form-input" id="newCatInput" placeholder="קטגוריה חדשה..." onkeydown="if(event.key==='Enter') addCategory()" style="font-size:13px; padding:7px 10px;">
@@ -2049,7 +2049,7 @@ function renderBank() {
     return;
   }
   if (state.bankSort==="alpha") items.sort((a,b)=>a.name.localeCompare(b.name,"he"));
-  else if (state.bankSort==="cat") items.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
+  else if (state.bankSort==="cat") items.sort((a,b)=>{const ai=state.categories.indexOf(a.category||"כללי"),bi=state.categories.indexOf(b.category||"כללי"); return (ai===-1?999:ai)-(bi===-1?999:bi)||a.name.localeCompare(b.name,"he");});
 
   grid.innerHTML=""; let lastCat=null;
   items.forEach(item => {
@@ -2169,7 +2169,7 @@ function renderCart() {
   const groups={};
   notDone.forEach(item=>{ const cat=item.category||"כללי"; if(!groups[cat])groups[cat]=[]; groups[cat].push(item); });
   list.innerHTML="";
-  Object.entries(groups).forEach(([cat,items])=>{ const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent=cat; list.appendChild(lbl); items.forEach(item=>list.appendChild(buildCartItem(item))); });
+  Object.entries(groups).sort(([a],[b])=>{const ai=state.categories.indexOf(a),bi=state.categories.indexOf(b);return (ai===-1?999:ai)-(bi===-1?999:bi);}).forEach(([cat,items])=>{ const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent=cat; list.appendChild(lbl); items.forEach(item=>list.appendChild(buildCartItem(item))); });
   if (doneitems.length) { const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent="✓ נכנס לעגלה"; list.appendChild(lbl); doneitems.forEach(item=>list.appendChild(buildCartItem(item))); }
   updateHeader();
 }
@@ -2508,8 +2508,6 @@ function renderCatTags(){
     }
     el.appendChild(div);
   });
-  // hint
-  const hint=document.createElement("div"); hint.style.cssText="font-size:10px;color:var(--text-dim);text-align:center;margin-top:4px;"; hint.textContent="גרור קטגוריות לשינוי סדר"; el.appendChild(hint);
 }
 function saveCatTagName(oldCat,newName){
   editingCatTag=null; const t=newName.trim();
@@ -2529,7 +2527,7 @@ function renderCatItems(){
   const el=document.getElementById("catItemsList"); el.innerHTML="";
   const allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
   if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
-  else allItems.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
+  else allItems.sort((a,b)=>{const ai=state.categories.indexOf(a.category||"כללי"),bi=state.categories.indexOf(b.category||"כללי"); return (ai===-1?999:ai)-(bi===-1?999:bi)||a.name.localeCompare(b.name,"he");});
   let lastGroupKey=null;
   allItems.forEach(item=>{
     const groupKey=state.catSort==="alpha"?(item.name[0]||"?"):(item.category||"כללי");
