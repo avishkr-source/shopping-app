@@ -820,6 +820,13 @@
         onkeydown="if(event.key==='Enter') addToBankFromCat()">
       <button class="btn-add-bank" onclick="addToBankFromCat()">+ הוסף</button>
     </div>
+    <div style="display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;margin-bottom:4px;">
+      <input class="bank-search-input" id="catSearchInput" placeholder="🔍 חיפוש פריט..." type="text" oninput="renderCatItems()" autocomplete="off" style="flex:1;">
+      <div class="filter-wrap" id="catFilterWrap">
+        <button class="btn-filter" id="catFilterBtn" onclick="toggleCatFilter(event)">🔽 סינון</button>
+        <div class="filter-dropdown" id="catFilterDropdown" style="display:none;"></div>
+      </div>
+    </div>
     <div class="items-section">
       <div class="items-list" id="catItemsList"></div>
     </div>
@@ -1422,6 +1429,7 @@ function subscribeToList(code) {
   if (firestoreUnsub) firestoreUnsub();
   setSyncDot("syncing");
   setupPresence();
+  let firstSnapshot = true;
   firestoreUnsub = db.collection("lists").doc(code).onSnapshot(
     snap => {
       if (!snap.exists) { showToast("הרשימה נמחקה"); leaveList(); return; }
@@ -1446,7 +1454,6 @@ function subscribeToList(code) {
             notifConfirmed = true;
             setNotifyBtn("confirmed");
             showToast("✅ העדכון התקבל!");
-            // After 4 sec return to idle
             setTimeout(() => {
               notifActive = false; notifConfirmed = false;
               setNotifyBtn("idle");
@@ -1454,8 +1461,11 @@ function subscribeToList(code) {
             }, 4000);
           }
         } else {
-          // I'm a recipient — show popup if new notification
-          if (notifAt > (lastNotificationAt||0)) {
+          // I'm a recipient
+          if (firstSnapshot) {
+            // On page load — just record the timestamp, don't show popup
+            lastNotificationAt = notifAt;
+          } else if (notifAt > (lastNotificationAt||0)) {
             lastNotificationAt = notifAt;
             markNotificationDelivered();
             showNotifPopup();
@@ -1470,6 +1480,7 @@ function subscribeToList(code) {
       }
 
       applyRemoteData(data);
+      firstSnapshot = false;
     },
     err => { console.error(err); setSyncDot("error"); showToast("שגיאת חיבור"); }
   );
@@ -2562,7 +2573,7 @@ function doFinish(pendingToReturn){
 
 // ── CAT MODAL ─────────────────────────────────────
 let editingCatTag=null, catOverlayOpen=false;
-function openCatModal() { editingCatTag=null; catOverlayOpen=true; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
+function openCatModal() { editingCatTag=null; catOverlayOpen=true; catActiveFilters.clear(); const s=document.getElementById("catSearchInput"); if(s) s.value=""; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
 function closeCatModal(){ catOverlayOpen=false; document.getElementById("catOverlay").style.display="none"; editingCatTag=null; }
 function setCatSort(mode){
   state.catSort=mode;
@@ -2624,7 +2635,9 @@ function addCategory(){
 
 function renderCatItems(){
   const el=document.getElementById("catItemsList"); el.innerHTML="";
-  const allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
+  const searchVal=(document.getElementById("catSearchInput")?.value||"").trim().toLowerCase();
+  let allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
+  if(searchVal) allItems=allItems.filter(i=>i.name.toLowerCase().includes(searchVal));
   if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
   else allItems.sort((a,b)=>{const ai=state.categories.indexOf(a.category||"כללי"),bi=state.categories.indexOf(b.category||"כללי"); return (ai===-1?999:ai)-(bi===-1?999:bi)||a.name.localeCompare(b.name,"he");});
   let lastGroupKey=null;
