@@ -1976,7 +1976,7 @@ function confirmAutoClassified(id) {
     okColor: "var(--blue)",
     onOk: () => {
       const idx = state.bank.findIndex(i=>i.id===id);
-      if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+      if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); if(catOverlayOpen) renderCatItems(); }
       showToast("✅ קטגוריה אושרה");
     }
   });
@@ -2096,7 +2096,7 @@ function renderBank() {
       badge.title=`סווג אוטומטית: ${item.category} — לחץ לאישור`;
       badge.onpointerdown=e=>{ e.stopPropagation(); };
       badge.onpointerup=e=>{ e.stopPropagation(); };
-      badge.onclick=e=>{ e.stopPropagation(); confirmAutoClassified(item.id); showToast("✅ קטגוריה אושרה"); };
+      badge.onclick=e=>{ e.stopPropagation(); confirmAutoClassified(item.id); };
       el.appendChild(badge);
     } else if (item.category && item.category!=="כללי" && state.bankSort!=="cat") {
       const catLabel=document.createElement("span"); catLabel.className="bank-item-cat"; catLabel.textContent=item.category; el.appendChild(catLabel);
@@ -2392,8 +2392,13 @@ function showConfirm({ icon="⚠️", title, msg, okLabel="אישור", okColor=
   btn.style.background = okColor;
   btn.onclick = () => { closeConfirm(); onOk(); };
   document.getElementById("confirmOverlay").style.display = "flex";
+  cancelLong(); // prevent click-through to bank items
 }
-function closeConfirm() { document.getElementById("confirmOverlay").style.display = "none"; }
+function closeConfirm() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  // Brief guard so the close-click doesn't pass through to bank items
+  cancelLong();
+}
 
 function confirmResetCart() {
   showConfirm({
@@ -2444,7 +2449,7 @@ function setCartStatus(id,status) {
 // ── LONG PRESS ────────────────────────────────────
 let longTimer, longFired=false, longTargetId=null;
 function startLong(e,item){ longFired=false; longTargetId=item.id; clearTimeout(longTimer); longTimer=setTimeout(()=>{longFired=true;openCtxMenu(e,item);},500); }
-function endLong(item){ clearTimeout(longTimer); if(longTargetId!==item.id){longFired=false;longTargetId=null;return;} if(!longFired)moveToCart(item); longFired=false; longTargetId=null; }
+function endLong(item){ clearTimeout(longTimer); if(longTargetId!==item.id){longFired=false;longTargetId=null;return;} const confirmOpen=document.getElementById("confirmOverlay")?.style.display!=="none"; if(!longFired&&!confirmOpen)moveToCart(item); longFired=false; longTargetId=null; }
 function cancelLong(){ clearTimeout(longTimer); longFired=false; longTargetId=null; }
 document.addEventListener("contextmenu",e=>e.preventDefault());
 
@@ -2570,7 +2575,7 @@ function renderCatItems(){
     row.appendChild(namePart);
     if(item.autoClassified&&item._src==="bank"){
       const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="❓"; badge.title="סווג אוטומטית — לחץ לאישור";
-      badge.onclick=()=>{ confirmAutoClassified(item.id); row.classList.remove("unconfirmed"); badge.remove(); showToast("✅ קטגוריה אושרה"); };
+      badge.onclick=()=>{ confirmAutoClassified(item.id); };
       row.appendChild(badge);
     }
     const sel=document.createElement("select"); sel.className="cat-item-sel";
