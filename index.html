@@ -2594,12 +2594,9 @@ function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartF
       const parsed = JSON.parse(saved);
       Object.assign(state, parsed);
       if (parsed.listId) {
-        // Auto-rejoin previous list
-        const snap = await db.collection("lists").doc(parsed.listId).get();
-        if (snap.exists) {
-          enterList(parsed.listId);
-          return;
-        }
+        // Enter immediately with local data — Firestore will sync in background
+        enterList(parsed.listId);
+        return;
       }
     }
   } catch(e) { console.warn("Load error", e); }
