@@ -1281,6 +1281,8 @@ function enterList(code, listName) {
   document.getElementById("headerListName").textContent = state.listName || "רשימת קניות";
   syncBankSortButtons();
   applyViewOrder();
+  // Render local/cached data immediately — don't wait for Firestore
+  renderBank(); renderCart(); updateHeader();
   subscribeToList(code);
   // Show welcome only on first ever use
   try {
