@@ -254,6 +254,7 @@
   }
   .bank-item:active { transform:scale(.93); background:var(--blue-pale); border-color:var(--blue-l); }
   .bank-item-cat { font-size:10px; color:var(--text-dim); margin-right:3px; }
+  .bank-item.in-cart { opacity:0.4; filter:grayscale(0.4); }
   .bank-item-unconfirmed {
     display:inline-block; font-size:11px; margin-right:3px; cursor:pointer; opacity:.8; transition:transform .15s;
   }
@@ -687,6 +688,9 @@
         <button class="btn-sort inactive" id="bankSortNoneBtn"  onclick="setBankSort('none')">ברירת מחדל</button>
         <button class="btn-sort inactive" id="bankSortAlphaBtn" onclick="setBankSort('alpha')">א-ב</button>
         <button class="btn-sort active"   id="bankSortCatBtn"   onclick="setBankSort('cat')">קטגוריות</button>
+        <div style="width:1px;background:var(--border);margin:0 2px;"></div>
+        <button class="btn-sort active" id="bankShowAllBtn"     onclick="setBankShow('all')">הכל</button>
+        <button class="btn-sort inactive" id="bankShowAvailBtn" onclick="setBankShow('available')">זמינים</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center;position:relative;">
         <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
@@ -1037,7 +1041,7 @@ function guessCategory(name) {
 // STATE
 // ═══════════════════════════════════════════════════
 const DEFAULT_CATS = ["כללי","ירקות ופירות","מוצרי חלב","בשר ודגים","לחם ומאפים","שתייה","חטיפים וממתקים","ניקיון ותכשירים","קפואים","שימורים"];
-let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", viewOrder:"bankFirst", listName:"", baskets:[] };
+let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName:"", baskets:[] };
 
 // Firebase state
 let currentListId  = null;
@@ -1946,15 +1950,36 @@ function syncBankSortButtons() {
     const btn = document.getElementById("bankSort"+s.charAt(0).toUpperCase()+s.slice(1)+"Btn");
     if (btn) btn.className = "btn-sort " + (m===s?"active":"inactive");
   });
+  const sh = state.bankShow || "all";
+  const btnAll = document.getElementById("bankShowAllBtn");
+  const btnAvail = document.getElementById("bankShowAvailBtn");
+  if (btnAll) btnAll.className = "btn-sort " + (sh==="all"?"active":"inactive");
+  if (btnAvail) btnAvail.className = "btn-sort " + (sh==="available"?"active":"inactive");
 }
 function setBankSort(mode) {
   state.bankSort = mode;
   syncBankSortButtons();
   save(); renderBank();
 }
+function setBankShow(mode) {
+  state.bankShow = mode;
+  syncBankSortButtons();
+  renderBank();
+}
 function confirmAutoClassified(id) {
-  const idx = state.bank.findIndex(i=>i.id===id);
-  if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+  const item = state.bank.find(i=>i.id===id); if(!item) return;
+  showConfirm({
+    icon: "❓",
+    title: "שיוך קטגוריה",
+    msg: `לשייך את "${item.name}" לקטגוריה "${item.category}"?`,
+    okLabel: "אישור ✓",
+    okColor: "var(--blue)",
+    onOk: () => {
+      const idx = state.bank.findIndex(i=>i.id===id);
+      if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+      showToast("✅ קטגוריה אושרה");
+    }
+  });
 }
 
 // ── BANK FILTER ───────────────────────────────────
@@ -2034,6 +2059,11 @@ function renderBank() {
   const grid = document.getElementById("bankGrid");
   const searchVal = (document.getElementById("bankSearchInput")?.value||"").trim().toLowerCase();
   let items = state.bank.slice();
+  const cartIds = new Set(state.cart.map(i=>i.id));
+  // bankShow: "all" = show all (dim in-cart), "available" = hide in-cart
+  if ((state.bankShow||"all") === "available") {
+    items = items.filter(i => !cartIds.has(i.id));
+  }
   // Apply active filters
   if (bankActiveFilters.size > 0) {
     items = items.filter(i => {
@@ -2057,7 +2087,9 @@ function renderBank() {
       const cat = item.category||"כללי";
       if (cat!==lastCat) { lastCat=cat; const hdr=document.createElement("div"); hdr.className="bank-cat-header"; hdr.textContent=cat; grid.appendChild(hdr); }
     }
-    const el = document.createElement("div"); el.className="bank-item";
+    const el = document.createElement("div");
+    const isInCart = cartIds.has(item.id);
+    el.className = "bank-item" + (isInCart && (state.bankShow||"all")==="all" ? " in-cart" : "");
     const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
     if (item.autoClassified) {
       const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="❓";
