@@ -532,11 +532,13 @@
   .btn-notify {
     background:linear-gradient(135deg,#3b6fd4,#6b94e8); border:none; border-radius:10px;
     color:#fff; padding:8px 14px; font-size:13px; font-weight:700;
-    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .3s;
     box-shadow:0 3px 10px rgba(59,111,212,.3); display:flex; align-items:center; gap:5px;
     margin:10px auto 0; width:100%;  justify-content:center;
   }
   .btn-notify:active { transform:scale(.96); }
+  .btn-notify.active  { background:linear-gradient(135deg,#c0392b,#e74c3c); box-shadow:0 3px 10px rgba(192,57,43,.35); }
+  .btn-notify.confirmed { background:linear-gradient(135deg,#1a9e6b,#27ae60); box-shadow:0 3px 10px rgba(26,158,107,.35); }
   .notif-dot {
     width:11px; height:11px; border-radius:50%; flex-shrink:0; transition:all .3s;
   }
@@ -1271,6 +1273,7 @@ function leaveList() {
   if (firestoreUnsub) { firestoreUnsub(); firestoreUnsub = null; }
   removePresence();
   notifActive = false;
+  notifConfirmed = false;
   lastNotificationAt = null;
   currentListId = null;
   try { localStorage.removeItem("shoppingApp_v5"); } catch(e){}
@@ -1287,27 +1290,38 @@ function leaveList() {
 }
 
 // ── NOTIFY ────────────────────────────────────────
-let notifActive = false; // true when WE sent an active notification
+let notifActive = false;
+let notifConfirmed = false;
+
+function setNotifyBtn(mode) {
+  // mode: "idle" | "active" | "confirmed"
+  const btn = document.getElementById("notifyBtn");
+  const txt = document.getElementById("notifyBtnText");
+  if (!btn || !txt) return;
+  btn.className = "btn-notify" + (mode==="active" ? " active" : mode==="confirmed" ? " confirmed" : "");
+  if (mode==="idle")      { txt.textContent = "🔔 עדכנתי את הרשימה"; }
+  if (mode==="active")    { txt.textContent = "🔴 בטל התראה"; }
+  if (mode==="confirmed") { txt.textContent = "✅ העדכון התקבל!"; }
+}
 
 async function sendUpdateNotification() {
   if (!currentListId || !auth.currentUser) return;
   const myUid = auth.currentUser.uid;
 
   if (notifActive) {
-    // Cancel notification
+    // Cancel
     try {
       await db.collection("lists").doc(currentListId).update({ "notification.cancelled": true });
-      notifActive = false;
-      document.getElementById("notifyBtnText").textContent = "🔔 עדכנתי את הרשימה";
+      notifActive = false; notifConfirmed = false;
+      setNotifyBtn("idle");
       document.getElementById("notifyDots").innerHTML = "";
     } catch(e) { showToast("שגיאה בביטול"); }
     return;
   }
 
-  // Send notification
+  // Send
   const presence = await getPresence();
   const otherUsers = presence.filter(u => u !== myUid);
-
   try {
     await db.collection("lists").doc(currentListId).set({
       notification: {
@@ -1319,15 +1333,15 @@ async function sendUpdateNotification() {
         targetUsers: otherUsers
       }
     }, { merge: true });
-    notifActive = true;
-    document.getElementById("notifyBtnText").textContent = "🔕 בטל התראה";
+    notifActive = true; notifConfirmed = false;
+    setNotifyBtn("active");
     renderNotifDots(otherUsers, [], []);
   } catch(e) { showToast("שגיאה בשליחה"); }
 }
 
 function renderNotifDots(targets, deliveredTo, seenBy) {
   const el = document.getElementById("notifyDots");
-  if (!el || !targets.length) return;
+  if (!el || !targets.length) { if(el) el.innerHTML=""; return; }
   el.innerHTML = "";
   targets.forEach(uid => {
     const dot = document.createElement("span");
@@ -1335,9 +1349,26 @@ function renderNotifDots(targets, deliveredTo, seenBy) {
       (seenBy.includes(uid) ? "notif-dot-filled" :
        deliveredTo.includes(uid) ? "notif-dot-hollow" :
        "notif-dot-gray");
-    dot.title = seenBy.includes(uid) ? "פתח" : deliveredTo.includes(uid) ? "קיבל" : "לא קיבל";
+    dot.title = seenBy.includes(uid) ? "אישר" : deliveredTo.includes(uid) ? "קיבל" : "לא קיבל";
     el.appendChild(dot);
   });
+}
+
+// Show recipient confirm popup (instead of just a toast)
+function showNotifPopup() {
+  // Use the confirm dialog with a custom feel
+  document.getElementById("confirmIcon").textContent = "🔔";
+  document.getElementById("confirmTitle").textContent = "הרשימה עודכנה!";
+  document.getElementById("confirmMsg").textContent = "אחד מבני המשפחה עדכן את רשימת הקניות.";
+  const btn = document.getElementById("confirmOkBtn");
+  btn.textContent = "✓ הבנתי";
+  btn.style.background = "var(--green)";
+  btn.onclick = async () => {
+    closeConfirm();
+    await markNotificationSeen();
+  };
+  // Override close button to just close without marking seen
+  document.getElementById("confirmOverlay").style.display = "flex";
 }
 
 async function markNotificationSeen() {
@@ -1409,23 +1440,33 @@ function subscribeToList(code) {
         const targets     = data.notification.targetUsers || [];
 
         if (data.notification.by === myUid) {
-          // I'm the sender — update dots
+          // I'm the sender — update dots + check if someone confirmed
           renderNotifDots(targets, deliveredTo, seenBy);
-        } else {
-          // I'm a recipient — show toast if new
-          if (lastNotificationAt && notifAt > lastNotificationAt) {
-            showToast("🔔 הרשימה עודכנה!");
-            markNotificationDelivered();
-            markNotificationSeen();
+          if (seenBy.length > 0 && !notifConfirmed) {
+            notifConfirmed = true;
+            setNotifyBtn("confirmed");
+            showToast("✅ העדכון התקבל!");
+            // After 4 sec return to idle
+            setTimeout(() => {
+              notifActive = false; notifConfirmed = false;
+              setNotifyBtn("idle");
+              document.getElementById("notifyDots").innerHTML = "";
+            }, 4000);
           }
-          if (!lastNotificationAt) lastNotificationAt = notifAt;
-          else lastNotificationAt = Math.max(lastNotificationAt, notifAt);
+        } else {
+          // I'm a recipient — show popup if new notification
+          if (notifAt > (lastNotificationAt||0)) {
+            lastNotificationAt = notifAt;
+            markNotificationDelivered();
+            showNotifPopup();
+          }
         }
-      } else if (data.notification && data.notification.cancelled && notifActive) {
-        // Our own cancellation reflected back
-        notifActive = false;
-        document.getElementById("notifyBtnText").textContent = "🔔 עדכנתי את הרשימה";
-        document.getElementById("notifyDots").innerHTML = "";
+      } else if (data.notification && data.notification.cancelled) {
+        if (notifActive) {
+          notifActive = false; notifConfirmed = false;
+          setNotifyBtn("idle");
+          document.getElementById("notifyDots").innerHTML = "";
+        }
       }
 
       applyRemoteData(data);
