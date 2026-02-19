@@ -670,7 +670,8 @@
           autocomplete="off" oninput="onAddInput(this.value)" onkeydown="onAddKeyDown(event)">
         <div class="autocomplete-suggestion" id="acSuggestion"></div>
       </div>
-      <button class="btn-add" onclick="addToBank()">הוסף +</button>
+      <button class="btn-add" onclick="addToBank()" title="הוסף לבנק">לבנק +</button>
+      <button class="btn-add" onclick="addToBankAndCart()" title="הוסף לרשימה ולבנק" style="background:var(--green);box-shadow:0 2px 8px rgba(26,158,107,.3);">לרשימה ✓</button>
     </div>
     <span class="cat-preview" id="catPreview"></span>
   </div>
@@ -707,9 +708,14 @@
       <div class="sec-bar sec-bar-green"></div>
       <span class="sec-title">רשימת קניות</span>
       <span class="sec-count cnt-green" id="cartCount">0 פריטים</span>
+      <div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;flex-shrink:0;" id="cartStats"></div>
       <button class="btn-finish" id="finishBtn" onclick="handleFinish()" style="display:none">✅ סיימתי</button>
     </div>
     <div id="cartList"></div>
+    <div style="position:relative;display:inline-block;margin-bottom:6px;" id="cartFilterWrap">
+      <button id="cartFilterBtn" onclick="toggleCartFilterMenu(event)" style="display:none;background:var(--bg3);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;">🔽 סינון</button>
+      <div id="cartFilterMenu" style="display:none;position:absolute;top:calc(100% + 5px);right:0;z-index:500;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px var(--shadow);min-width:170px;padding:6px;animation:slideIn .12s ease;"></div>
+    </div>
     <button class="btn-notify" id="notifyBtn" onclick="sendUpdateNotification()" style="display:none">
       <span id="notifyBtnText">🔔 עדכנתי את הרשימה</span>
       <span id="notifyDots" style="display:flex;gap:4px;align-items:center;margin-right:6px;"></span>
@@ -2061,19 +2067,94 @@ function renderBank() {
 // ═══════════════════════════════════════════════════
 // RENDER CART
 // ═══════════════════════════════════════════════════
+const cartActiveFilters = new Set();
+
+function toggleCartFilterMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById("cartFilterMenu");
+  if (menu.style.display === "none") { buildCartFilterMenu(); menu.style.display = "block"; }
+  else menu.style.display = "none";
+}
+
+function buildCartFilterMenu() {
+  const menu = document.getElementById("cartFilterMenu");
+  menu.innerHTML = "";
+  const cats = [...new Set(state.cart.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
+  const addOption = (label, key) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);";
+    row.onmouseenter = () => row.style.background = "var(--bg3)";
+    row.onmouseleave = () => row.style.background = "";
+    const cb = document.createElement("input"); cb.type="checkbox";
+    cb.style.cssText = "width:15px;height:15px;accent-color:var(--green);flex-shrink:0;cursor:pointer;";
+    cb.checked = cartActiveFilters.has(key);
+    const lbl = document.createElement("span"); lbl.textContent = label;
+    const toggle = () => { cartActiveFilters.has(key) ? cartActiveFilters.delete(key) : cartActiveFilters.add(key); cb.checked=cartActiveFilters.has(key); updateCartFilterBtn(); renderCart(); };
+    cb.onchange = toggle; row.onclick = e => { if(e.target!==cb) toggle(); };
+    row.appendChild(cb); row.appendChild(lbl); menu.appendChild(row);
+  };
+  cats.forEach(cat => addOption(cat, cat));
+  if (cartActiveFilters.size > 0) {
+    const hr = document.createElement("div"); hr.style.cssText="height:1px;background:var(--border);margin:4px 0;"; menu.appendChild(hr);
+    const clr = document.createElement("button");
+    clr.textContent = "✕ נקה סינון";
+    clr.style.cssText = "width:100%;padding:6px;border:none;background:none;color:var(--green);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;";
+    clr.onclick = () => { cartActiveFilters.clear(); updateCartFilterBtn(); buildCartFilterMenu(); renderCart(); };
+    menu.appendChild(clr);
+  }
+}
+
+function updateCartFilterBtn() {
+  const btn = document.getElementById("cartFilterBtn");
+  if (!btn) return;
+  const n = cartActiveFilters.size;
+  btn.textContent = n > 0 ? `🔽 סינון (${n})` : "🔽 סינון";
+  btn.style.background = n > 0 ? "var(--green)" : "var(--bg3)";
+  btn.style.borderColor = n > 0 ? "var(--green)" : "var(--border)";
+  btn.style.color = n > 0 ? "#fff" : "var(--text-mid)";
+}
+
+document.addEventListener("click", () => {
+  const m = document.getElementById("cartFilterMenu"); if(m) m.style.display="none";
+});
+
 function renderCart() {
   const list = document.getElementById("cartList");
+  const filterBtn = document.getElementById("cartFilterBtn");
+
+  // Stats
+  const done   = state.cart.filter(i=>i.status==="done").length;
+  const cancel = state.cart.filter(i=>i.status==="cancel").length;
+  const active = state.cart.filter(i=>!i.status).length;
+  const statsEl = document.getElementById("cartStats");
+  if (statsEl) {
+    if (state.cart.length) {
+      statsEl.innerHTML =
+        `<span style="color:var(--green);">✓ ${done}</span>` +
+        `<span style="color:var(--text-dim);">·</span>` +
+        `<span style="color:var(--red);">✕ ${cancel}</span>` +
+        `<span style="color:var(--text-dim);">·</span>` +
+        `<span style="color:var(--text-mid);">⬜ ${active}</span>`;
+    } else { statsEl.innerHTML = ""; }
+  }
   document.getElementById("cartCount").textContent = `${state.cart.length} פריטים`;
   document.getElementById("finishBtn").style.display = state.cart.length?"block":"none";
   const notifyBtn = document.getElementById("notifyBtn");
   if (notifyBtn) notifyBtn.style.display = state.cart.length ? "flex" : "none";
+  if (filterBtn) filterBtn.style.display = state.cart.length ? "inline-block" : "none";
+
   if (!state.cart.length) { list.innerHTML='<div class="empty">לחץ על פריט בבנק כדי להוסיף לרשימה<span class="empty-icon">🛒</span></div>'; return; }
-  const notDone=state.cart.filter(i=>i.status!=="done"), done=state.cart.filter(i=>i.status==="done");
+
+  // Apply filter
+  let cartItems = state.cart.slice();
+  if (cartActiveFilters.size > 0) cartItems = cartItems.filter(i => cartActiveFilters.has(i.category||"כללי"));
+
+  const notDone=cartItems.filter(i=>i.status!=="done"), doneitems=cartItems.filter(i=>i.status==="done");
   const groups={};
   notDone.forEach(item=>{ const cat=item.category||"כללי"; if(!groups[cat])groups[cat]=[]; groups[cat].push(item); });
   list.innerHTML="";
   Object.entries(groups).forEach(([cat,items])=>{ const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent=cat; list.appendChild(lbl); items.forEach(item=>list.appendChild(buildCartItem(item))); });
-  if (done.length) { const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent="✓ נכנס לעגלה"; list.appendChild(lbl); done.forEach(item=>list.appendChild(buildCartItem(item))); }
+  if (doneitems.length) { const lbl=document.createElement("div"); lbl.className="cat-label"; lbl.textContent="✓ נכנס לעגלה"; list.appendChild(lbl); doneitems.forEach(item=>list.appendChild(buildCartItem(item))); }
   updateHeader();
 }
 
@@ -2218,6 +2299,17 @@ function buildCartItem(item) {
 // ═══════════════════════════════════════════════════
 // ACTIONS
 // ═══════════════════════════════════════════════════
+function addToBankAndCart() {
+  const inp=document.getElementById("addInput"); const name=inp.value.trim(); if(!name)return;
+  if(state.cart.some(i=>i.name===name)){showToast("פריט זה כבר ברשימה"); return;}
+  pushUndo();
+  const cat = guessCategory(name)||"כללי";
+  const item = {id:uid(), name, category:cat, autoClassified:true};
+  if(!state.bank.some(i=>i.name===name)) state.bank.push(item);
+  state.cart.push({...item, note:"", noteText:"", qty:0, status:null});
+  inp.value=""; document.getElementById("acSuggestion").innerHTML=""; closeAcDropdown(); document.getElementById("catPreview").textContent="";
+  save(); renderBank(); renderCart();
+}
 function addToBank() {
   const inp=document.getElementById("addInput"); const name=inp.value.trim(); if(!name)return;
   if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט זה כבר קיים");return;}
