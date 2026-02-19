@@ -232,7 +232,6 @@
   /* BANK */
   .bank-controls { margin-bottom:8px; display:flex; flex-direction:column; gap:6px; }
   .bank-sort-row  { display:flex; gap:5px; }
-  .bank-search-row { display:flex; gap:6px; align-items:center; }
   .bank-search-input {
     width:100%; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px;
     padding:7px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit;
@@ -521,45 +520,6 @@
     min-width:16px; text-align:center; line-height:1;
   }
   .cat-add-bank-row { display:flex; gap:6px; margin-bottom:10px; flex-shrink:0; }
-  /* FILTER BAR */
-  .cat-filter-bar {
-    display:flex; gap:5px; flex-wrap:wrap; padding:6px 0 8px; flex-shrink:0;
-    border-bottom:1px solid var(--border); margin-bottom:6px;
-  }
-  .cat-filter-btn {
-    padding:4px 10px; border-radius:20px; border:1.5px solid var(--border);
-    background:var(--bg3); color:var(--text-mid); font-size:11px; font-weight:600;
-    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
-    flex-shrink:0;
-  }
-  .cat-filter-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
-  .cat-filter-btn.unconf { background:#fff8e1; border-color:#f5c842; color:#a07800; }
-  .cat-filter-btn.unconf.active { background:#f5c842; border-color:#e0b000; color:#5a4000; }
-  /* Filter dropdown */
-  .filter-wrap { position:relative; display:inline-block; }
-  .btn-filter {
-    background:var(--bg3); border:1.5px solid var(--border); border-radius:20px;
-    color:var(--text-mid); padding:5px 12px; font-size:11px; font-weight:600;
-    cursor:pointer; font-family:inherit; transition:all .15s; white-space:nowrap;
-  }
-  .btn-filter.has-filter { background:var(--blue); border-color:var(--blue); color:#fff; }
-  .btn-filter:active { transform:scale(.95); }
-  .filter-dropdown {
-    position:absolute; top:calc(100% + 5px); right:0; z-index:500;
-    background:var(--bg); border:1.5px solid var(--border); border-radius:12px;
-    box-shadow:0 6px 24px var(--shadow); min-width:180px; padding:6px;
-    animation:slideIn .12s ease;
-  }
-  .filter-option {
-    display:flex; align-items:center; gap:8px; padding:7px 10px;
-    border-radius:8px; cursor:pointer; transition:background .1s;
-    font-size:13px; color:var(--text); user-select:none;
-  }
-  .filter-option:hover { background:var(--bg3); }
-  .filter-option input[type=checkbox] { width:15px; height:15px; accent-color:var(--blue); flex-shrink:0; cursor:pointer; }
-  .filter-divider { height:1px; background:var(--border); margin:4px 0; }
-  .filter-clear { width:100%; padding:6px; border:none; background:none; color:var(--blue); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border-radius:8px; }
-  .filter-clear:hover { background:var(--blue-pale); }
   .cat-add-bank-input {
     flex:1; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px;
     padding:7px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit; transition:border-color .2s;
@@ -727,14 +687,12 @@
         <button class="btn-sort inactive" id="bankSortAlphaBtn" onclick="setBankSort('alpha')">א-ב</button>
         <button class="btn-sort active"   id="bankSortCatBtn"   onclick="setBankSort('cat')">קטגוריות</button>
       </div>
-      <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
-      <div class="bank-search-row">
+      <div style="display:flex;gap:6px;align-items:center;position:relative;">
         <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
-        <div class="filter-wrap" id="bankFilterWrap">
-          <button class="btn-filter" id="bankFilterBtn" onclick="toggleBankFilter(event)">🔽 סינון</button>
-          <div class="filter-dropdown" id="bankFilterDropdown" style="display:none;"></div>
-        </div>
+        <button id="bankFilterBtn" onclick="toggleBankFilterMenu(event)" style="flex-shrink:0;background:var(--bg3);border:1.5px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;">🔽 סינון</button>
+        <div id="bankFilterMenu" style="display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:500;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px var(--shadow);min-width:170px;padding:6px;animation:slideIn .12s ease;"></div>
       </div>
+    </div>
     <div class="bank-grid" id="bankGrid"></div>
   </div>
 
@@ -829,11 +787,6 @@
       <div class="cat-divider-line"></div>
       <div class="cat-divider-label">כל הפריטים</div>
       <div class="cat-divider-line"></div>
-    </div>
-    <!-- Filter button -->
-    <div class="filter-wrap" id="catFilterWrap" style="margin-bottom:6px;">
-      <button class="btn-filter" id="catFilterBtn" onclick="toggleCatFilter(event)">🔽 סינון</button>
-      <div class="filter-dropdown" id="catFilterDropdown" style="display:none;"></div>
     </div>
     <!-- Add item to bank from within modal -->
     <div class="cat-add-bank-row">
@@ -1281,8 +1234,6 @@ function enterList(code, listName) {
   document.getElementById("headerListName").textContent = state.listName || "רשימת קניות";
   syncBankSortButtons();
   applyViewOrder();
-  // Render local/cached data immediately — don't wait for Firestore
-  renderBank(); renderCart(); updateHeader();
   subscribeToList(code);
   // Show welcome only on first ever use
   try {
@@ -1983,48 +1934,65 @@ function setBankSort(mode) {
 }
 function confirmAutoClassified(id) {
   const idx = state.bank.findIndex(i=>i.id===id);
-  if (idx!==-1) {
-    state.bank[idx].autoClassified=false; save();
-    if (!state.bank.some(i=>i.autoClassified)) { bankActiveFilters.delete("unconfirmed"); catActiveFilters.delete("unconfirmed"); updateBankFilterBtn(); updateCatFilterBtn(); }
-    renderBank();
+  if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+}
+
+// ── BANK FILTER ───────────────────────────────────
+const bankActiveFilters = new Set(); // "unconfirmed" | category name
+
+function toggleBankFilterMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById("bankFilterMenu");
+  if (menu.style.display === "none") {
+    buildBankFilterMenu();
+    menu.style.display = "block";
+  } else {
+    menu.style.display = "none";
   }
 }
 
-let bankActiveFilters = new Set(); // set of: "unconfirmed" | category name
+function buildBankFilterMenu() {
+  const menu = document.getElementById("bankFilterMenu");
+  menu.innerHTML = "";
 
-function toggleBankFilter(e) {
-  e.stopPropagation();
-  const dd = document.getElementById("bankFilterDropdown");
-  if (dd.style.display === "none") { renderBankFilterDropdown(); dd.style.display = "block"; }
-  else dd.style.display = "none";
-}
-
-function renderBankFilterDropdown() {
-  const dd = document.getElementById("bankFilterDropdown");
-  dd.innerHTML = "";
   const hasUnconfirmed = state.bank.some(i => i.autoClassified);
-  const usedCats = [...new Set(state.bank.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
+  const cats = [...new Set(state.bank.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
 
-  const mkOption = (label, key, isUnconf=false) => {
-    const opt = document.createElement("div"); opt.className = "filter-option";
-    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = bankActiveFilters.has(key);
-    cb.onchange = () => { bankActiveFilters.has(key) ? bankActiveFilters.delete(key) : bankActiveFilters.add(key); updateBankFilterBtn(); renderBank(); };
-    const lbl = document.createElement("span");
-    lbl.textContent = label;
-    if (isUnconf) lbl.style.color = "#a07800";
-    opt.appendChild(cb); opt.appendChild(lbl);
-    opt.onclick = e => { if(e.target!==cb){ cb.checked=!cb.checked; cb.onchange(); } };
-    dd.appendChild(opt);
+  const addOption = (label, key, color) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);";
+    row.onmouseenter = () => row.style.background = "var(--bg3)";
+    row.onmouseleave = () => row.style.background = "";
+    const cb = document.createElement("input"); cb.type="checkbox";
+    cb.style.cssText = "width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;cursor:pointer;";
+    cb.checked = bankActiveFilters.has(key);
+    const lbl = document.createElement("span"); lbl.textContent = label;
+    if (color) lbl.style.color = color;
+    row.appendChild(cb); row.appendChild(lbl);
+    const toggle = () => {
+      bankActiveFilters.has(key) ? bankActiveFilters.delete(key) : bankActiveFilters.add(key);
+      cb.checked = bankActiveFilters.has(key);
+      updateBankFilterBtn();
+      renderBank();
+    };
+    cb.onchange = toggle;
+    row.onclick = e => { if(e.target!==cb) toggle(); };
+    menu.appendChild(row);
   };
 
-  if (hasUnconfirmed) { mkOption("❓ ממתין לאישור", "unconfirmed", true); dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"})); }
-  usedCats.forEach(cat => mkOption(cat, cat));
+  if (hasUnconfirmed) {
+    addOption("❓ ממתין לאישור", "unconfirmed", "#a07800");
+    const hr = document.createElement("div"); hr.style.cssText="height:1px;background:var(--border);margin:4px 0;"; menu.appendChild(hr);
+  }
+  cats.forEach(cat => addOption(cat, cat));
 
   if (bankActiveFilters.size > 0) {
-    dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"}));
-    const clr = document.createElement("button"); clr.className="filter-clear"; clr.textContent="✕ נקה סינון";
-    clr.onclick = () => { bankActiveFilters.clear(); updateBankFilterBtn(); renderBankFilterDropdown(); renderBank(); };
-    dd.appendChild(clr);
+    const hr = document.createElement("div"); hr.style.cssText="height:1px;background:var(--border);margin:4px 0;"; menu.appendChild(hr);
+    const clr = document.createElement("button");
+    clr.textContent = "✕ נקה סינון";
+    clr.style.cssText = "width:100%;padding:6px;border:none;background:none;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:8px;";
+    clr.onclick = () => { bankActiveFilters.clear(); updateBankFilterBtn(); buildBankFilterMenu(); renderBank(); };
+    menu.appendChild(clr);
   }
 }
 
@@ -2032,21 +2000,21 @@ function updateBankFilterBtn() {
   const btn = document.getElementById("bankFilterBtn");
   if (!btn) return;
   const n = bankActiveFilters.size;
-  btn.className = "btn-filter" + (n > 0 ? " has-filter" : "");
   btn.textContent = n > 0 ? `🔽 סינון (${n})` : "🔽 סינון";
+  btn.style.background = n > 0 ? "var(--blue)" : "var(--bg3)";
+  btn.style.borderColor = n > 0 ? "var(--blue)" : "var(--border)";
+  btn.style.color = n > 0 ? "#fff" : "var(--text-mid)";
 }
 
-// Close bank dropdown when clicking outside
-document.addEventListener("click", e => {
-  if (!e.target.closest("#bankFilterWrap")) document.getElementById("bankFilterDropdown").style.display="none";
+document.addEventListener("click", () => {
+  const m = document.getElementById("bankFilterMenu"); if(m) m.style.display="none";
 });
 
 function renderBank() {
   const grid = document.getElementById("bankGrid");
   const searchVal = (document.getElementById("bankSearchInput")?.value||"").trim().toLowerCase();
   let items = state.bank.slice();
-
-  // Multi-select filter
+  // Apply active filters
   if (bankActiveFilters.size > 0) {
     items = items.filter(i => {
       if (bankActiveFilters.has("unconfirmed") && i.autoClassified) return true;
@@ -2055,9 +2023,7 @@ function renderBank() {
     });
   }
   if (searchVal) items = items.filter(i=>i.name.toLowerCase().includes(searchVal));
-
   document.getElementById("bankCount").textContent = `${state.bank.length} פריטים`;
-
   if (!items.length) {
     grid.innerHTML = state.bank.length ? '<div class="empty">לא נמצאו תוצאות<span class="empty-icon">🔍</span></div>' : '<div class="empty">בנק הפריטים ריק<span class="empty-icon">📦</span></div>';
     return;
@@ -2341,9 +2307,7 @@ function doFinish(pendingToReturn){
 
 // ── CAT MODAL ─────────────────────────────────────
 let editingCatTag=null, catOverlayOpen=false;
-let catFilter = "all"; // "all" | "unconfirmed" | <category name>
-
-function openCatModal() { editingCatTag=null; catOverlayOpen=true; catActiveFilters.clear(); renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
+function openCatModal() { editingCatTag=null; catOverlayOpen=true; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
 function closeCatModal(){ catOverlayOpen=false; document.getElementById("catOverlay").style.display="none"; editingCatTag=null; }
 function setCatSort(mode){
   state.catSort=mode;
@@ -2352,58 +2316,6 @@ function setCatSort(mode){
   renderCatItems();
 }
 function renderCatModal(){ renderCatTags(); renderCatItems(); }
-
-let catActiveFilters = new Set();
-
-function toggleCatFilter(e) {
-  e.stopPropagation();
-  const dd = document.getElementById("catFilterDropdown");
-  if (dd.style.display === "none") { renderCatFilterDropdown(); dd.style.display = "block"; }
-  else dd.style.display = "none";
-}
-
-function renderCatFilterDropdown() {
-  const dd = document.getElementById("catFilterDropdown");
-  dd.innerHTML = "";
-  const allItems = [...state.bank, ...state.cart];
-  const hasUnconfirmed = allItems.some(i => i.autoClassified);
-  const usedCats = [...new Set(allItems.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
-
-  const mkOption = (label, key, isUnconf=false) => {
-    const opt = document.createElement("div"); opt.className = "filter-option";
-    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = catActiveFilters.has(key);
-    cb.onchange = () => { catActiveFilters.has(key) ? catActiveFilters.delete(key) : catActiveFilters.add(key); updateCatFilterBtn(); renderCatItems(); };
-    const lbl = document.createElement("span"); lbl.textContent = label;
-    if (isUnconf) lbl.style.color = "#a07800";
-    opt.appendChild(cb); opt.appendChild(lbl);
-    opt.onclick = e => { if(e.target!==cb){ cb.checked=!cb.checked; cb.onchange(); } };
-    dd.appendChild(opt);
-  };
-
-  if (hasUnconfirmed) { mkOption("❓ ממתין לאישור", "unconfirmed", true); dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"})); }
-  usedCats.forEach(cat => mkOption(cat, cat));
-
-  if (catActiveFilters.size > 0) {
-    dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"}));
-    const clr = document.createElement("button"); clr.className="filter-clear"; clr.textContent="✕ נקה סינון";
-    clr.onclick = () => { catActiveFilters.clear(); updateCatFilterBtn(); renderCatFilterDropdown(); renderCatItems(); };
-    dd.appendChild(clr);
-  }
-}
-
-function updateCatFilterBtn() {
-  const btn = document.getElementById("catFilterBtn");
-  if (!btn) return;
-  const n = catActiveFilters.size;
-  btn.className = "btn-filter" + (n > 0 ? " has-filter" : "");
-  btn.textContent = n > 0 ? `🔽 סינון (${n})` : "🔽 סינון";
-}
-
-document.addEventListener("click", e => {
-  if (!e.target.closest("#catFilterWrap")) { const dd=document.getElementById("catFilterDropdown"); if(dd) dd.style.display="none"; }
-});
-
-function renderFilterBar() {} // kept for compat — replaced by dropdown
 
 function renderCatTags(){
   const el=document.getElementById("catTagsList"); el.innerHTML="";
@@ -2440,21 +2352,8 @@ function addCategory(){
 
 function renderCatItems(){
   const el=document.getElementById("catItemsList"); el.innerHTML="";
-  let allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
-
-  // Apply multi-select filter
-  if (catActiveFilters.size > 0) {
-    allItems = allItems.filter(i => {
-      if (catActiveFilters.has("unconfirmed") && i.autoClassified) return true;
-      if (catActiveFilters.has(i.category||"כללי")) return true;
-      return false;
-    });
-  }
-
-  if (!allItems.length) {
-    el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text-dim);font-size:13px;">אין פריטים תואמים לסינון</div>';
-    return;
-  }  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+  const allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
+  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
   else allItems.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
   let lastGroupKey=null;
   allItems.forEach(item=>{
@@ -2477,14 +2376,13 @@ function renderCatItems(){
       else{const idx=state.cart.findIndex(x=>x.id===item.id);if(idx!==-1)state.cart[idx].category=sel.value;}
       item.autoClassified=false; row.classList.remove("unconfirmed"); const b=row.querySelector(".cat-item-badge"); if(b)b.remove();
       item.category=sel.value; save(); renderBank(); renderCart();
-      if(state.catSort==="cat"||catFilter!=="all") renderFilterBar();
-      renderCatItems();
+      if(state.catSort==="cat")renderCatItems();
     };
     row.appendChild(sel);
     // Delete button — bank items only
     if(item._src==="bank"){
       const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️"; btnDel.title="הסר מהבנק";
-      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderFilterBar(); renderCatItems(); showToast("פריט הוסר"); };
+      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderCatItems(); showToast("פריט הוסר"); };
       row.appendChild(btnDel);
     }
     el.appendChild(row);
@@ -2594,9 +2492,12 @@ function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartF
       const parsed = JSON.parse(saved);
       Object.assign(state, parsed);
       if (parsed.listId) {
-        // Enter immediately with local data — Firestore will sync in background
-        enterList(parsed.listId);
-        return;
+        // Auto-rejoin previous list
+        const snap = await db.collection("lists").doc(parsed.listId).get();
+        if (snap.exists) {
+          enterList(parsed.listId);
+          return;
+        }
       }
     }
   } catch(e) { console.warn("Load error", e); }
