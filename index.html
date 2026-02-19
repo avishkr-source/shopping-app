@@ -2058,21 +2058,27 @@ document.addEventListener("click", () => {
 function renderBank() {
   const grid = document.getElementById("bankGrid");
   const searchVal = (document.getElementById("bankSearchInput")?.value||"").trim().toLowerCase();
+  const showAll = (state.bankShow||"all") === "all";
+
+  // Build item list
   let items = state.bank.slice();
-  const cartIds = new Set(state.cart.map(i=>i.id));
-  // bankShow: "all" = show all (dim in-cart), "available" = hide in-cart
-  if ((state.bankShow||"all") === "available") {
-    items = items.filter(i => !cartIds.has(i.id));
+  if (showAll) {
+    // Add cart items as dimmed entries
+    state.cart.forEach(ci => {
+      if (!items.some(b=>b.id===ci.id)) items.push({...ci, _inCart:true});
+    });
   }
-  // Apply active filters
+
+  // Apply active filters (filter on category/unconfirmed, but keep _inCart items through)
   if (bankActiveFilters.size > 0) {
     items = items.filter(i => {
-      if (bankActiveFilters.has("unconfirmed") && i.autoClassified) return true;
+      if (bankActiveFilters.has("unconfirmed") && i.autoClassified && !i._inCart) return true;
       if (bankActiveFilters.has(i.category||"כללי")) return true;
       return false;
     });
   }
   if (searchVal) items = items.filter(i=>i.name.toLowerCase().includes(searchVal));
+
   document.getElementById("bankCount").textContent = `${state.bank.length} פריטים`;
   if (!items.length) {
     grid.innerHTML = state.bank.length ? '<div class="empty">לא נמצאו תוצאות<span class="empty-icon">🔍</span></div>' : '<div class="empty">בנק הפריטים ריק<span class="empty-icon">📦</span></div>';
@@ -2088,23 +2094,24 @@ function renderBank() {
       if (cat!==lastCat) { lastCat=cat; const hdr=document.createElement("div"); hdr.className="bank-cat-header"; hdr.textContent=cat; grid.appendChild(hdr); }
     }
     const el = document.createElement("div");
-    const isInCart = cartIds.has(item.id);
-    el.className = "bank-item" + (isInCart && (state.bankShow||"all")==="all" ? " in-cart" : "");
+    el.className = "bank-item" + (item._inCart ? " in-cart" : "");
     const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
-    if (item.autoClassified) {
+    if (!item._inCart && item.autoClassified) {
       const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="❓";
       badge.title=`סווג אוטומטית: ${item.category} — לחץ לאישור`;
       badge.onpointerdown=e=>{ e.stopPropagation(); };
       badge.onpointerup=e=>{ e.stopPropagation(); };
       badge.onclick=e=>{ e.stopPropagation(); confirmAutoClassified(item.id); };
       el.appendChild(badge);
-    } else if (item.category && item.category!=="כללי" && state.bankSort!=="cat") {
+    } else if (!item._inCart && item.category && item.category!=="כללי" && state.bankSort!=="cat") {
       const catLabel=document.createElement("span"); catLabel.className="bank-item-cat"; catLabel.textContent=item.category; el.appendChild(catLabel);
     }
-    el.addEventListener("pointerdown",e=>{ e.stopPropagation(); startLong(e,item); });
-    el.addEventListener("pointerup",  e=>{ e.stopPropagation(); endLong(item); });
-    el.addEventListener("pointerleave",()=>cancelLong());
-    el.addEventListener("pointercancel",()=>cancelLong());
+    if (!item._inCart) {
+      el.addEventListener("pointerdown",e=>{ e.stopPropagation(); startLong(e,item); });
+      el.addEventListener("pointerup",  e=>{ e.stopPropagation(); endLong(item); });
+      el.addEventListener("pointerleave",()=>cancelLong());
+      el.addEventListener("pointercancel",()=>cancelLong());
+    }
     grid.appendChild(el);
   });
   updateHeader();
