@@ -1567,9 +1567,13 @@ function addBasketToCart(basket) {
 }
 
 function deleteBasket(id) {
-  pushUndo();
-  state.baskets = (state.baskets||[]).filter(b => b.id !== id);
-  save(); renderBasketsList();
+  const basket = (state.baskets||[]).find(b=>b.id===id); if(!basket) return;
+  showConfirm({
+    icon: "🧺", title: "מחיקת סל",
+    msg: `למחוק את הסל "${basket.name}"? פעולה זו לא ניתנת לביטול.`,
+    okLabel: "מחק", okColor: "var(--red)",
+    onOk: () => { pushUndo(); state.baskets=(state.baskets||[]).filter(b=>b.id!==id); save(); renderBasketsList(); }
+  });
 }
 
 // Edit/create modal
@@ -2472,7 +2476,17 @@ function openCtxMenu(e,item){
 }
 function closeCtx(){ document.getElementById("ctxMenu").style.display="none"; ctxTarget=null; }
 function ctxEdit()  { if(ctxTarget)openEditModal(ctxTarget); closeCtx(); }
-function ctxDelete(){ if(ctxTarget){pushUndo();state.bank=state.bank.filter(i=>i.id!==ctxTarget.id);save();renderBank();} closeCtx(); }
+function ctxDelete(){ 
+  if(ctxTarget){
+    const item = ctxTarget; closeCtx();
+    showConfirm({
+      icon: "🗑️", title: "הסרת פריט",
+      msg: `למחוק את "${item.name}" מהבנק לצמיתות?`,
+      okLabel: "מחק", okColor: "var(--red)",
+      onOk: () => { pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); }
+    });
+  } else closeCtx();
+}
 
 // ── EDIT MODAL ────────────────────────────────────
 let editTarget=null;
@@ -2547,7 +2561,7 @@ function renderCatTags(){
     const btnE=document.createElement("button"); btnE.className="tag-btn"; btnE.textContent="✏️"; btnE.onclick=()=>{editingCatTag=cat;renderCatTags();}; div.appendChild(btnE);
     if(cat!=="כללי"){
       const btnD=document.createElement("button"); btnD.className="tag-btn tag-btn-del"; btnD.textContent="✕";
-      btnD.onclick=()=>{pushUndo();state.categories=state.categories.filter(c=>c!==cat);state.bank=state.bank.map(i=>i.category===cat?{...i,category:"כללי"}:i);state.cart=state.cart.map(i=>i.category===cat?{...i,category:"כללי"}:i);save();renderCatModal();renderBank();renderCart();};
+      btnD.onclick=()=>{ showConfirm({ icon:"📂", title:"מחיקת קטגוריה", msg:`למחוק את הקטגוריה "${cat}"? כל הפריטים בה יועברו ל"כללי".`, okLabel:"מחק", okColor:"var(--red)", onOk:()=>{pushUndo();state.categories=state.categories.filter(c=>c!==cat);state.bank=state.bank.map(i=>i.category===cat?{...i,category:"כללי"}:i);state.cart=state.cart.map(i=>i.category===cat?{...i,category:"כללי"}:i);save();renderCatModal();renderBank();renderCart();} }); };
       div.appendChild(btnD);
     }
     el.appendChild(div);
