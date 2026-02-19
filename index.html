@@ -520,6 +520,20 @@
     min-width:16px; text-align:center; line-height:1;
   }
   .cat-add-bank-row { display:flex; gap:6px; margin-bottom:10px; flex-shrink:0; }
+  /* FILTER BAR */
+  .cat-filter-bar {
+    display:flex; gap:5px; flex-wrap:wrap; padding:6px 0 8px; flex-shrink:0;
+    border-bottom:1px solid var(--border); margin-bottom:6px;
+  }
+  .cat-filter-btn {
+    padding:4px 10px; border-radius:20px; border:1.5px solid var(--border);
+    background:var(--bg3); color:var(--text-mid); font-size:11px; font-weight:600;
+    cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+    flex-shrink:0;
+  }
+  .cat-filter-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .cat-filter-btn.unconf { background:#fff8e1; border-color:#f5c842; color:#a07800; }
+  .cat-filter-btn.unconf.active { background:#f5c842; border-color:#e0b000; color:#5a4000; }
   .cat-add-bank-input {
     flex:1; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px;
     padding:7px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit; transition:border-color .2s;
@@ -689,6 +703,7 @@
       </div>
       <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
     </div>
+    <div class="cat-filter-bar" id="bankFilterBar" style="padding:6px 0 4px;"></div>
     <div class="bank-grid" id="bankGrid"></div>
   </div>
 
@@ -784,6 +799,8 @@
       <div class="cat-divider-label">כל הפריטים</div>
       <div class="cat-divider-line"></div>
     </div>
+    <!-- Filter bar -->
+    <div class="cat-filter-bar" id="catFilterBar"></div>
     <!-- Add item to bank from within modal -->
     <div class="cat-add-bank-row">
       <input class="cat-add-bank-input" id="catAddBankInput" placeholder="הוסף פריט לבנק..." autocomplete="off"
@@ -1930,15 +1947,49 @@ function setBankSort(mode) {
 }
 function confirmAutoClassified(id) {
   const idx = state.bank.findIndex(i=>i.id===id);
-  if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); }
+  if (idx!==-1) {
+    state.bank[idx].autoClassified=false; save();
+    // If no more unconfirmed, reset filter
+    if (bankFilter==="unconfirmed" && !state.bank.some(i=>i.autoClassified)) bankFilter="all";
+    renderBank();
+  }
+}
+
+let bankFilter = "all"; // "all" | "unconfirmed" | <category name>
+
+function renderBankFilterBar() {
+  const bar = document.getElementById("bankFilterBar");
+  if (!bar) return;
+  bar.innerHTML = "";
+  const hasUnconfirmed = state.bank.some(i => i.autoClassified);
+
+  const mkBtn = (label, key, extra="") => {
+    const btn = document.createElement("button");
+    btn.className = "cat-filter-btn" + (extra?" "+extra:"") + (bankFilter===key?" active":"");
+    btn.textContent = label;
+    btn.onclick = () => { bankFilter = key; renderBank(); };
+    bar.appendChild(btn);
+  };
+
+  mkBtn("הכל", "all");
+  if (hasUnconfirmed) mkBtn("❓ ממתין לאישור", "unconfirmed", "unconf");
+  const usedCats = [...new Set(state.bank.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
+  usedCats.forEach(cat => mkBtn(cat, cat));
 }
 
 function renderBank() {
   const grid = document.getElementById("bankGrid");
   const searchVal = (document.getElementById("bankSearchInput")?.value||"").trim().toLowerCase();
   let items = state.bank.slice();
+
+  // Apply filters
+  if (bankFilter === "unconfirmed") items = items.filter(i => i.autoClassified);
+  else if (bankFilter !== "all") items = items.filter(i => (i.category||"כללי") === bankFilter);
   if (searchVal) items = items.filter(i=>i.name.toLowerCase().includes(searchVal));
+
   document.getElementById("bankCount").textContent = `${state.bank.length} פריטים`;
+  renderBankFilterBar();
+
   if (!items.length) {
     grid.innerHTML = state.bank.length ? '<div class="empty">לא נמצאו תוצאות<span class="empty-icon">🔍</span></div>' : '<div class="empty">בנק הפריטים ריק<span class="empty-icon">📦</span></div>';
     return;
@@ -2222,7 +2273,9 @@ function doFinish(pendingToReturn){
 
 // ── CAT MODAL ─────────────────────────────────────
 let editingCatTag=null, catOverlayOpen=false;
-function openCatModal() { editingCatTag=null; catOverlayOpen=true; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
+let catFilter = "all"; // "all" | "unconfirmed" | <category name>
+
+function openCatModal() { editingCatTag=null; catOverlayOpen=true; catFilter="all"; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
 function closeCatModal(){ catOverlayOpen=false; document.getElementById("catOverlay").style.display="none"; editingCatTag=null; }
 function setCatSort(mode){
   state.catSort=mode;
@@ -2230,7 +2283,29 @@ function setCatSort(mode){
   document.getElementById("sortCatBtn").className  ="btn-sort "+(mode==="cat"  ?"active":"inactive");
   renderCatItems();
 }
-function renderCatModal(){ renderCatTags(); renderCatItems(); }
+function renderCatModal(){ renderCatTags(); renderFilterBar(); renderCatItems(); }
+
+function renderFilterBar() {
+  const bar = document.getElementById("catFilterBar");
+  if (!bar) return;
+  bar.innerHTML = "";
+  const allItems = [...state.bank, ...state.cart];
+  const hasUnconfirmed = allItems.some(i => i.autoClassified);
+
+  const mkBtn = (label, key, extra="") => {
+    const btn = document.createElement("button");
+    btn.className = "cat-filter-btn" + (extra?" "+extra:"") + (catFilter===key?" active":"");
+    btn.textContent = label;
+    btn.onclick = () => { catFilter = key; renderFilterBar(); renderCatItems(); };
+    bar.appendChild(btn);
+  };
+
+  mkBtn("הכל", "all");
+  if (hasUnconfirmed) mkBtn("❓ ממתין לאישור", "unconfirmed", "unconf");
+
+  const usedCats = [...new Set(allItems.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
+  usedCats.forEach(cat => mkBtn(cat, cat));
+}
 
 function renderCatTags(){
   const el=document.getElementById("catTagsList"); el.innerHTML="";
@@ -2267,8 +2342,16 @@ function addCategory(){
 
 function renderCatItems(){
   const el=document.getElementById("catItemsList"); el.innerHTML="";
-  const allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
-  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+  let allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
+
+  // Apply filter
+  if (catFilter === "unconfirmed") allItems = allItems.filter(i => i.autoClassified);
+  else if (catFilter !== "all") allItems = allItems.filter(i => (i.category||"כללי") === catFilter);
+
+  if (!allItems.length) {
+    el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text-dim);font-size:13px;">אין פריטים תואמים לסינון</div>';
+    return;
+  }  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
   else allItems.sort((a,b)=>(a.category||"כללי").localeCompare(b.category||"כללי","he")||a.name.localeCompare(b.name,"he"));
   let lastGroupKey=null;
   allItems.forEach(item=>{
@@ -2291,13 +2374,14 @@ function renderCatItems(){
       else{const idx=state.cart.findIndex(x=>x.id===item.id);if(idx!==-1)state.cart[idx].category=sel.value;}
       item.autoClassified=false; row.classList.remove("unconfirmed"); const b=row.querySelector(".cat-item-badge"); if(b)b.remove();
       item.category=sel.value; save(); renderBank(); renderCart();
-      if(state.catSort==="cat")renderCatItems();
+      if(state.catSort==="cat"||catFilter!=="all") renderFilterBar();
+      renderCatItems();
     };
     row.appendChild(sel);
     // Delete button — bank items only
     if(item._src==="bank"){
       const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️"; btnDel.title="הסר מהבנק";
-      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderCatItems(); showToast("פריט הוסר"); };
+      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderFilterBar(); renderCatItems(); showToast("פריט הוסר"); };
       row.appendChild(btnDel);
     }
     el.appendChild(row);
