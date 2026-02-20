@@ -407,7 +407,7 @@
   .btn-sort.active   { background:var(--blue-pale); border-color:var(--blue-l); color:var(--blue); }
   .btn-sort.inactive { background:var(--bg3); border-color:var(--border); color:var(--text-dim); }
   .cats-section {
-    flex-shrink:0; max-height:150px; overflow-y:auto;
+    flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;
     border:1.5px solid var(--border); border-radius:12px;
     background:var(--bg); padding:8px 10px 7px;
   }
@@ -415,7 +415,7 @@
     font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase;
     margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;
   }
-  .cats-tags { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+  .cats-tags { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; flex:1; min-height:0; overflow-y:auto; }
   .cat-row { display:flex; align-items:center; gap:6px; background:#eef3ff; border:1.5px solid #c5d4f5; border-radius:10px; padding:8px 12px; cursor:pointer; transition:background .15s; user-select:none; }
   .cat-row:active { background:#dce8ff; }
   .cat-row.expanded { border-color:var(--blue-l); background:#dce8ff; border-radius:10px 10px 0 0; border-bottom:none; }
@@ -805,9 +805,9 @@
   <div class="modal cat-modal" onclick="event.stopPropagation()" style="max-height:96vh; display:flex; flex-direction:column;">
     <button class="modal-close" onclick="closeCatModal()">✕</button>
     <div class="modal-title">📂 ניהול קטגוריות</div>
-    <div class="cats-section" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+    <div class="cats-section">
       <div class="cats-sec-title"><span>קטגוריות</span><span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-right:6px;">גרור לשינוי סדר</span></div>
-      <div class="cats-tags" id="catTagsList" style="overflow-y:auto;flex:1;min-height:0;padding-bottom:4px;"></div>
+      <div class="cats-tags" id="catTagsList"></div>
       <div class="new-cat-row">
         <input class="form-input" id="newCatInput" placeholder="קטגוריה חדשה..." onkeydown="if(event.key==='Enter') addCategory()" style="font-size:13px; padding:7px 10px;">
         <button class="btn-add-cat" onclick="addCategory()">+ הוסף</button>
