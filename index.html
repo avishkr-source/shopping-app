@@ -401,7 +401,7 @@
   .btn-leave:active { transform:scale(.97); }
 
   /* CAT MODAL */
-  .cat-modal { max-width:460px; }
+  .cat-modal { max-width:460px; min-height:70vh; }
   .sort-row { display:flex; gap:6px; margin-bottom:10px; flex-shrink:0; }
   .btn-sort { padding:6px 12px; border-radius:8px; border:1.5px solid; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
   .btn-sort.active   { background:var(--blue-pale); border-color:var(--blue-l); color:var(--blue); }
@@ -802,7 +802,7 @@
 
 <!-- CAT MODAL -->
 <div class="overlay" id="catOverlay" style="display:none" onclick="closeCatModal()">
-  <div class="modal cat-modal" onclick="event.stopPropagation()" style="max-height:92vh; display:flex; flex-direction:column;">
+  <div class="modal cat-modal" onclick="event.stopPropagation()" style="max-height:96vh; display:flex; flex-direction:column;">
     <button class="modal-close" onclick="closeCatModal()">✕</button>
     <div class="modal-title">📂 ניהול קטגוריות</div>
     <div class="cats-section" style="flex:1;min-height:0;display:flex;flex-direction:column;">
@@ -2759,6 +2759,19 @@ function renderCatTags(){
           const srcTag=document.createElement("span"); srcTag.style.cssText="font-size:10px;color:var(--text-dim);margin-right:auto;flex-shrink:0;";
           srcTag.textContent=item._src==="cart"?"🛒":"";
           irow.appendChild(srcTag);
+
+          // Reassign category dropdown
+          const sel=document.createElement("select"); sel.className="cat-item-sel";
+          sel.title="שנה קטגוריה";
+          sel.innerHTML=state.categories.map(c=>`<option value="${c}" ${c===cat?"selected":""}>${c}</option>`).join("");
+          sel.onchange=()=>{
+            pushUndo();
+            const newCat=sel.value;
+            if(item._src==="bank"){ const idx=state.bank.findIndex(x=>x.id===item.id); if(idx!==-1){state.bank[idx].category=newCat;state.bank[idx].autoClassified=false;} }
+            else { const idx=state.cart.findIndex(x=>x.id===item.id); if(idx!==-1) state.cart[idx].category=newCat; }
+            item.category=newCat; save(); renderBank(); renderCart(); renderCatTags();
+          };
+          irow.appendChild(sel);
 
           if(item._src==="bank"){
             const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️";
