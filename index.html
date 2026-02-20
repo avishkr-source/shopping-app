@@ -415,10 +415,18 @@
     font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:1px; text-transform:uppercase;
     margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;
   }
-  .cats-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
-  .cat-tag { display:flex; align-items:center; gap:3px; background:var(--bg2); border:1.5px solid var(--border); border-radius:8px; padding:4px 9px; }
-  .cat-tag-name { color:var(--text); font-size:12px; }
-  .cat-tag-edit-input { background:var(--bg); border:1.5px solid var(--blue-l); border-radius:6px; padding:2px 6px; color:var(--text); font-size:12px; font-family:inherit; outline:none; width:80px; }
+  .cats-tags { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+  .cat-row { display:flex; align-items:center; gap:6px; background:#eef3ff; border:1.5px solid #c5d4f5; border-radius:10px; padding:8px 12px; cursor:pointer; transition:background .15s; user-select:none; }
+  .cat-row:active { background:#dce8ff; }
+  .cat-row.expanded { border-color:var(--blue-l); background:#dce8ff; border-radius:10px 10px 0 0; border-bottom:none; }
+  .cat-row-name { flex:1; font-size:14px; font-weight:600; color:#2a4da0; }
+  .cat-row-count { font-size:11px; color:#6a7eaa; background:#fff; border-radius:20px; padding:1px 7px; }
+  .cat-row-arrow { font-size:11px; color:#6a7eaa; transition:transform .2s; }
+  .cat-row.expanded .cat-row-arrow { transform:rotate(180deg); }
+  .cat-row-edit-input { flex:1; background:var(--bg); border:1.5px solid var(--blue-l); border-radius:6px; padding:2px 8px; color:var(--text); font-size:14px; font-weight:600; font-family:inherit; outline:none; }
+  .cat-items-panel { background:var(--bg); border:1.5px solid #c5d4f5; border-top:none; border-radius:0 0 10px 10px; padding:6px 8px; margin-bottom:4px; }
+  .cat-item-row { display:flex; align-items:center; gap:6px; background:var(--bg2); border:1.5px solid var(--border); border-radius:9px; padding:6px 10px; margin-bottom:4px; }
+  .cat-item-row.unconfirmed { border-color:#f5a623; background:#fffbf2; }
   .tag-btn { background:none; border:none; cursor:pointer; padding:0 2px; font-size:12px; }
   .tag-btn-del { color:var(--red); }
   .new-cat-row { display:flex; gap:6px; }
@@ -687,7 +695,6 @@
     </div>
     <div class="bank-controls">
       <div class="bank-sort-row">
-        <button class="btn-sort inactive" id="bankSortNoneBtn"  onclick="setBankSort('none')">ברירת מחדל</button>
         <button class="btn-sort inactive" id="bankSortAlphaBtn" onclick="setBankSort('alpha')">א-ב</button>
         <button class="btn-sort active"   id="bankSortCatBtn"   onclick="setBankSort('cat')">קטגוריות</button>
         <div style="width:1px;background:var(--border);margin:0 2px;"></div>
@@ -761,6 +768,7 @@
     <select class="form-select" id="editCat"></select>
     <button class="btn-primary" onclick="saveEdit()">שמור שינויים</button>
     <button class="btn-secondary" onclick="closeEditModal()">ביטול</button>
+    <button id="editDeleteBankBtn" onclick="deleteFromBankViaEdit()" style="width:100%;margin-top:6px;padding:9px;border:1.5px solid #f5b8b8;border-radius:9px;background:#fff5f5;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:none;">🗑️ מחק מהבנק</button>
   </div>
 </div>
 
@@ -797,38 +805,13 @@
   <div class="modal cat-modal" onclick="event.stopPropagation()" style="max-height:92vh; display:flex; flex-direction:column;">
     <button class="modal-close" onclick="closeCatModal()">✕</button>
     <div class="modal-title">📂 ניהול קטגוריות</div>
-    <div class="sort-row">
-      <button class="btn-sort active"   id="sortAlphaBtn" onclick="setCatSort('alpha')">א-ב</button>
-      <button class="btn-sort inactive" id="sortCatBtn"   onclick="setCatSort('cat')">קטגוריות</button>
-    </div>
-    <div class="cats-section">
+    <div class="cats-section" style="flex:1;min-height:0;display:flex;flex-direction:column;">
       <div class="cats-sec-title"><span>קטגוריות</span><span style="font-size:10px;font-weight:400;color:var(--text-dim);margin-right:6px;">גרור לשינוי סדר</span></div>
-      <div class="cats-tags" id="catTagsList"></div>
+      <div class="cats-tags" id="catTagsList" style="overflow-y:auto;flex:1;min-height:0;padding-bottom:4px;"></div>
       <div class="new-cat-row">
         <input class="form-input" id="newCatInput" placeholder="קטגוריה חדשה..." onkeydown="if(event.key==='Enter') addCategory()" style="font-size:13px; padding:7px 10px;">
         <button class="btn-add-cat" onclick="addCategory()">+ הוסף</button>
       </div>
-    </div>
-    <div class="cat-divider">
-      <div class="cat-divider-line"></div>
-      <div class="cat-divider-label">כל הפריטים</div>
-      <div class="cat-divider-line"></div>
-    </div>
-    <!-- Add item to bank from within modal -->
-    <div class="cat-add-bank-row">
-      <input class="cat-add-bank-input" id="catAddBankInput" placeholder="הוסף פריט לבנק..." autocomplete="off"
-        onkeydown="if(event.key==='Enter') addToBankFromCat()">
-      <button class="btn-add-bank" onclick="addToBankFromCat()">+ הוסף</button>
-    </div>
-    <div style="display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;margin-bottom:4px;">
-      <input class="bank-search-input" id="catSearchInput" placeholder="🔍 חיפוש פריט..." type="text" oninput="renderCatItems()" autocomplete="off" style="flex:1;">
-      <div class="filter-wrap" id="catFilterWrap">
-        <button class="btn-filter" id="catFilterBtn" onclick="toggleCatFilter(event)">🔽 סינון</button>
-        <div class="filter-dropdown" id="catFilterDropdown" style="display:none;"></div>
-      </div>
-    </div>
-    <div class="items-section">
-      <div class="items-list" id="catItemsList"></div>
     </div>
   </div>
 </div>
@@ -2004,7 +1987,7 @@ function previewCategory(val) {
 // ═══════════════════════════════════════════════════
 function syncBankSortButtons() {
   const m = state.bankSort || "cat";
-  ["none","alpha","cat"].forEach(s => {
+  ["alpha","cat"].forEach(s => {
     const btn = document.getElementById("bankSort"+s.charAt(0).toUpperCase()+s.slice(1)+"Btn");
     if (btn) btn.className = "btn-sort " + (m===s?"active":"inactive");
   });
@@ -2557,8 +2540,28 @@ function ctxDelete(){
 
 // ── EDIT MODAL ────────────────────────────────────
 let editTarget=null;
-function openEditModal(item){ editTarget=item; document.getElementById("editName").value=item.name; document.getElementById("editCat").innerHTML=state.categories.map(c=>`<option value="${c}" ${c===item.category?"selected":""}>${c}</option>`).join(""); document.getElementById("editOverlay").style.display="flex"; setTimeout(()=>document.getElementById("editName").focus(),80); }
+function openEditModal(item){
+  editTarget=item;
+  document.getElementById("editName").value=item.name;
+  document.getElementById("editCat").innerHTML=state.categories.map(c=>`<option value="${c}" ${c===item.category?"selected":""}>${c}</option>`).join("");
+  const inBank = state.bank.some(b=>b.id===item.id);
+  document.getElementById("editDeleteBankBtn").style.display = inBank ? "block" : "none";
+  document.getElementById("editOverlay").style.display="flex";
+  setTimeout(()=>document.getElementById("editName").focus(),80);
+}
 function closeEditModal(){ document.getElementById("editOverlay").style.display="none"; editTarget=null; }
+
+function deleteFromBankViaEdit() {
+  if (!editTarget) return;
+  const item = editTarget;
+  closeEditModal();
+  showConfirm({
+    icon: "🗑️", title: "מחיקה מהבנק",
+    msg: `למחוק את "${item.name}" מהבנק לצמיתות?`,
+    okLabel: "מחק", okColor: "var(--red)",
+    onOk: () => { pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); }
+  });
+}
 function saveEdit(){
   if(!editTarget)return; const name=document.getElementById("editName").value.trim(); const cat=document.getElementById("editCat").value; if(!name)return;
   pushUndo();
@@ -2591,7 +2594,7 @@ function doFinish(pendingToReturn){
 
 // ── CAT MODAL ─────────────────────────────────────
 let editingCatTag=null, catOverlayOpen=false;
-function openCatModal() { editingCatTag=null; catOverlayOpen=true; catActiveFilters.clear(); const s=document.getElementById("catSearchInput"); if(s) s.value=""; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
+function openCatModal() { editingCatTag=null; catOverlayOpen=true; catActiveFilters.clear(); expandedCat=null; renderCatModal(); document.getElementById("catOverlay").style.display="flex"; }
 
 const catActiveFilters = new Set();
 
@@ -2646,115 +2649,158 @@ document.addEventListener("click", e => {
 function closeCatModal(){ catOverlayOpen=false; document.getElementById("catOverlay").style.display="none"; editingCatTag=null; }
 function setCatSort(mode){
   state.catSort=mode;
-  document.getElementById("sortAlphaBtn").className="btn-sort "+(mode==="alpha"?"active":"inactive");
-  document.getElementById("sortCatBtn").className  ="btn-sort "+(mode==="cat"  ?"active":"inactive");
-  renderCatItems();
+  renderCatModal();
 }
-function renderCatModal(){ renderCatTags(); renderCatItems(); }
+function renderCatModal(){ renderCatTags(); }
+
+let expandedCat = null; // which category is currently expanded
+let catDragSrc = null;
 
 function renderCatTags(){
   const el=document.getElementById("catTagsList"); el.innerHTML="";
-  let dragSrc=null;
-  state.categories.forEach(cat=>{
-    const div=document.createElement("div"); div.className="cat-tag";
-    div.draggable=true;
-    div.style.cursor="grab";
-    div.dataset.cat=cat;
 
-    div.ondragstart=e=>{ dragSrc=cat; div.style.opacity=".4"; e.dataTransfer.effectAllowed="move"; };
-    div.ondragend=()=>{ div.style.opacity="1"; document.querySelectorAll(".cat-tag").forEach(d=>d.style.background=""); };
-    div.ondragover=e=>{ e.preventDefault(); div.style.background="var(--blue-pale)"; };
-    div.ondragleave=()=>{ div.style.background=""; };
-    div.ondrop=e=>{ e.preventDefault(); div.style.background="";
-      if(dragSrc===cat) return;
-      const from=state.categories.indexOf(dragSrc), to=state.categories.indexOf(cat);
-      if(from===-1||to===-1) return;
-      state.categories.splice(from,1); state.categories.splice(to,0,dragSrc);
+  state.categories.forEach(cat=>{
+    const allItems=[...state.bank,...state.cart];
+    const count = allItems.filter(i=>(i.category||"כללי")===cat).length;
+
+    // ── Category row ──
+    const row=document.createElement("div");
+    row.className="cat-row"+(expandedCat===cat?" expanded":"");
+    row.draggable=true;
+    row.dataset.cat=cat;
+
+    row.ondragstart=e=>{ catDragSrc=cat; row.style.opacity=".4"; e.dataTransfer.effectAllowed="move"; };
+    row.ondragend=()=>{ row.style.opacity="1"; };
+    row.ondragover=e=>{ e.preventDefault(); row.style.background="#c8daff"; };
+    row.ondragleave=()=>{ row.style.background=""; };
+    row.ondrop=e=>{ e.preventDefault(); row.style.background="";
+      if(catDragSrc===cat) return;
+      const from=state.categories.indexOf(catDragSrc), to=state.categories.indexOf(cat);
+      if(from===-1||to===-1)return;
+      state.categories.splice(from,1); state.categories.splice(to,0,catDragSrc);
       save(); renderCatTags();
     };
 
     if(editingCatTag===cat){
-      const inp=document.createElement("input"); inp.className="cat-tag-edit-input"; inp.value=cat;
+      // Edit mode
+      const inp=document.createElement("input"); inp.className="cat-row-edit-input"; inp.value=cat;
       inp.onblur=()=>saveCatTagName(cat,inp.value);
       inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){editingCatTag=null;renderCatTags();}};
-      div.appendChild(inp); setTimeout(()=>inp.focus(),30);
-    } else { const span=document.createElement("span"); span.className="cat-tag-name"; span.textContent=cat; div.appendChild(span); }
-    const btnE=document.createElement("button"); btnE.className="tag-btn"; btnE.textContent="✏️"; btnE.onclick=()=>{editingCatTag=cat;renderCatTags();}; div.appendChild(btnE);
+      inp.onclick=e=>e.stopPropagation();
+      row.appendChild(inp); setTimeout(()=>inp.focus(),30);
+    } else {
+      const nameSpan=document.createElement("span"); nameSpan.className="cat-row-name"; nameSpan.textContent=cat;
+      row.appendChild(nameSpan);
+      const countSpan=document.createElement("span"); countSpan.className="cat-row-count"; countSpan.textContent=count;
+      row.appendChild(countSpan);
+    }
+
+    // Edit btn
+    const btnE=document.createElement("button"); btnE.className="tag-btn"; btnE.textContent="✏️";
+    btnE.onclick=e=>{ e.stopPropagation(); editingCatTag=cat; renderCatTags(); };
+    row.appendChild(btnE);
+
+    // Delete btn (not for כללי)
     if(cat!=="כללי"){
       const btnD=document.createElement("button"); btnD.className="tag-btn tag-btn-del"; btnD.textContent="✕";
-      btnD.onclick=()=>{ showConfirm({ icon:"📂", title:"מחיקת קטגוריה", msg:`למחוק את הקטגוריה "${cat}"? כל הפריטים בה יועברו ל"כללי".`, okLabel:"מחק", okColor:"var(--red)", onOk:()=>{pushUndo();state.categories=state.categories.filter(c=>c!==cat);state.bank=state.bank.map(i=>i.category===cat?{...i,category:"כללי"}:i);state.cart=state.cart.map(i=>i.category===cat?{...i,category:"כללי"}:i);save();renderCatModal();renderBank();renderCart();} }); };
-      div.appendChild(btnD);
+      btnD.onclick=e=>{ e.stopPropagation(); showConfirm({ icon:"📂", title:"מחיקת קטגוריה", msg:`למחוק את "${cat}"? הפריטים יועברו ל"כללי".`, okLabel:"מחק", okColor:"var(--red)", onOk:()=>{ pushUndo(); state.categories=state.categories.filter(c=>c!==cat); state.bank=state.bank.map(i=>i.category===cat?{...i,category:"כללי"}:i); state.cart=state.cart.map(i=>i.category===cat?{...i,category:"כללי"}:i); if(expandedCat===cat)expandedCat=null; save();renderCatTags();renderBank();renderCart(); } }); };
+      row.appendChild(btnD);
     }
-    el.appendChild(div);
+
+    // Expand arrow (only when not editing)
+    if(editingCatTag!==cat){
+      const arrow=document.createElement("span"); arrow.className="cat-row-arrow"; arrow.textContent="▾";
+      row.appendChild(arrow);
+      row.onclick=()=>{ expandedCat=(expandedCat===cat?null:cat); renderCatTags(); };
+    }
+
+    el.appendChild(row);
+
+    // ── Expanded items panel ──
+    if(expandedCat===cat){
+      const panel=document.createElement("div"); panel.className="cat-items-panel";
+
+      // Add item input
+      const addRow=document.createElement("div"); addRow.style.cssText="display:flex;gap:6px;margin-bottom:8px;";
+      const addInp=document.createElement("input"); addInp.className="cat-add-bank-input"; addInp.placeholder="הוסף פריט לקטגוריה..."; addInp.autocomplete="off";
+      addInp.style.flex="1";
+      const addBtn=document.createElement("button"); addBtn.className="btn-add-bank"; addBtn.textContent="+ הוסף";
+      const doAdd=()=>{
+        const name=addInp.value.trim(); if(!name)return;
+        if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט כבר קיים");return;}
+        pushUndo(); state.bank.push({id:uid(),name,category:cat,autoClassified:false}); addInp.value=""; save(); renderBank(); renderCatTags();
+      };
+      addBtn.onclick=doAdd; addInp.onkeydown=e=>{if(e.key==="Enter")doAdd();};
+      addRow.appendChild(addInp); addRow.appendChild(addBtn); panel.appendChild(addRow);
+
+      // Items list
+      const items=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))]
+        .filter(i=>(i.category||"כללי")===cat)
+        .sort((a,b)=>a.name.localeCompare(b.name,"he"));
+
+      if(!items.length){
+        const empty=document.createElement("div"); empty.style.cssText="text-align:center;color:var(--text-dim);font-size:12px;padding:8px;"; empty.textContent="אין פריטים"; panel.appendChild(empty);
+      } else {
+        items.forEach(item=>{
+          const irow=document.createElement("div"); irow.className="cat-item-row"+(item.autoClassified?" unconfirmed":"");
+          const namePart=document.createElement("span"); namePart.className="cat-item-name"; namePart.textContent=item.name;
+          if(item._src==="bank"){
+            namePart.style.cursor="text";
+            namePart.onclick=()=>startEditCatItemName(item,irow,namePart);
+          }
+          irow.appendChild(namePart);
+
+          if(item.autoClassified&&item._src==="bank"){
+            const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="✨"; badge.title="סווג אוטומטית — לחץ לאישור";
+            badge.onclick=()=>confirmAutoClassified(item.id);
+            irow.appendChild(badge);
+          }
+
+          const srcTag=document.createElement("span"); srcTag.style.cssText="font-size:10px;color:var(--text-dim);margin-right:auto;flex-shrink:0;";
+          srcTag.textContent=item._src==="cart"?"🛒":"";
+          irow.appendChild(srcTag);
+
+          if(item._src==="bank"){
+            const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️";
+            btnDel.onclick=()=>{ showConfirm({icon:"🗑️",title:"מחיקת פריט",msg:`למחוק את "${item.name}"?`,okLabel:"מחק",okColor:"var(--red)",onOk:()=>{pushUndo();state.bank=state.bank.filter(i=>i.id!==item.id);save();renderBank();renderCatTags();}}); };
+            irow.appendChild(btnDel);
+          }
+          panel.appendChild(irow);
+        });
+      }
+      el.appendChild(panel);
+    }
   });
 }
+
+function renderCatItems(){ renderCatTags(); } // keep compat
+
 function saveCatTagName(oldCat,newName){
   editingCatTag=null; const t=newName.trim();
   if(!t||(t!==oldCat&&state.categories.includes(t))){renderCatTags();return;}
   pushUndo(); state.categories=state.categories.map(c=>c===oldCat?t:c);
   state.bank=state.bank.map(i=>i.category===oldCat?{...i,category:t}:i);
   state.cart=state.cart.map(i=>i.category===oldCat?{...i,category:t}:i);
-  // Update WORD_TO_CAT so future guesses use the new name
   Object.keys(WORD_TO_CAT).forEach(w=>{ if(WORD_TO_CAT[w]===oldCat) WORD_TO_CAT[w]=t; });
-  save();renderCatModal();renderBank();renderCart();
+  if(expandedCat===oldCat) expandedCat=t;
+  save();renderCatTags();renderBank();renderCart();
 }
 function addCategory(){
   const inp=document.getElementById("newCatInput"); const name=inp.value.trim();
   if(!name||state.categories.includes(name)){showToast("קטגוריה זו כבר קיימת");return;}
-  pushUndo(); state.categories.push(name); inp.value=""; save(); renderCatTags();
+  pushUndo(); state.categories.push(name); expandedCat=name; inp.value=""; save(); renderCatTags();
 }
 
-function renderCatItems(){
-  const el=document.getElementById("catItemsList"); el.innerHTML="";
-  const searchVal=(document.getElementById("catSearchInput")?.value||"").trim().toLowerCase();
-  let allItems=[...state.bank.map(i=>({...i,_src:"bank"})),...state.cart.map(i=>({...i,_src:"cart"}))];
-  if(searchVal) allItems=allItems.filter(i=>i.name.toLowerCase().includes(searchVal));
-  if(catActiveFilters.size > 0) allItems=allItems.filter(i=>{
-    if(catActiveFilters.has("unconfirmed") && i.autoClassified) return true;
-    if(catActiveFilters.has(i.category||"כללי")) return true;
-    return false;
-  });
-  if(state.catSort==="alpha") allItems.sort((a,b)=>a.name.localeCompare(b.name,"he"));
-  else allItems.sort((a,b)=>{const ai=state.categories.indexOf(a.category||"כללי"),bi=state.categories.indexOf(b.category||"כללי"); return (ai===-1?999:ai)-(bi===-1?999:bi)||a.name.localeCompare(b.name,"he");});
-  let lastGroupKey=null;
-  allItems.forEach(item=>{
-    const groupKey=state.catSort==="alpha"?(item.name[0]||"?"):(item.category||"כללי");
-    if(groupKey!==lastGroupKey){ lastGroupKey=groupKey; const hdr=document.createElement("div"); hdr.className="cat-group-header"; hdr.textContent=groupKey; el.appendChild(hdr); }
-    const row=document.createElement("div"); row.className="cat-item-row"+(item.autoClassified?" unconfirmed":"");
-    const namePart=document.createElement("span"); namePart.className="cat-item-name"; namePart.textContent=item.name;
-    if(item._src==="bank"){namePart.style.cursor="text";namePart.onclick=()=>startEditCatItemName(item,row,namePart,sel);}
-    row.appendChild(namePart);
-    if(item.autoClassified&&item._src==="bank"){
-      const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="✨"; badge.title="סווג אוטומטית — לחץ לאישור";
-      badge.onclick=()=>{ confirmAutoClassified(item.id); };
-      row.appendChild(badge);
-    }
-    const sel=document.createElement("select"); sel.className="cat-item-sel";
-    sel.innerHTML=state.categories.map(c=>`<option value="${c}" ${c===item.category?"selected":""}>${c}</option>`).join("");
-    sel.onchange=()=>{
-      pushUndo();
-      if(item._src==="bank"){const idx=state.bank.findIndex(x=>x.id===item.id);if(idx!==-1){state.bank[idx].category=sel.value;state.bank[idx].autoClassified=false;}}
-      else{const idx=state.cart.findIndex(x=>x.id===item.id);if(idx!==-1)state.cart[idx].category=sel.value;}
-      item.autoClassified=false; row.classList.remove("unconfirmed"); const b=row.querySelector(".cat-item-badge"); if(b)b.remove();
-      item.category=sel.value; save(); renderBank(); renderCart();
-      if(state.catSort==="cat")renderCatItems();
-    };
-    row.appendChild(sel);
-    // Delete button — bank items only
-    if(item._src==="bank"){
-      const btnDel=document.createElement("button"); btnDel.className="tag-btn tag-btn-del"; btnDel.textContent="🗑️"; btnDel.title="הסר מהבנק";
-      btnDel.onclick=()=>{ pushUndo(); state.bank=state.bank.filter(i=>i.id!==item.id); save(); renderBank(); renderCatItems(); showToast("פריט הוסר"); };
-      row.appendChild(btnDel);
-    }
-    el.appendChild(row);
-  });
-}
-
-function startEditCatItemName(item,row,namePart,sel){
+function startEditCatItemName(item, row, namePart){
   const inp=document.createElement("input"); inp.className="cat-item-name-input"; inp.value=item.name;
   row.replaceChild(inp,namePart); inp.focus(); inp.select();
-  const finish=()=>{ const n=inp.value.trim(); if(n&&n!==item.name){pushUndo();const idx=state.bank.findIndex(x=>x.id===item.id);if(idx!==-1)state.bank[idx].name=n;item.name=n;save();renderBank();} namePart.textContent=item.name; row.replaceChild(namePart,inp); };
-  inp.onblur=finish; inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){inp.value=item.name;inp.blur();}};
+  const finish=()=>{
+    const n=inp.value.trim();
+    if(n&&n!==item.name){ pushUndo(); const idx=state.bank.findIndex(x=>x.id===item.id); if(idx!==-1)state.bank[idx].name=n; item.name=n; save(); renderBank(); }
+    namePart.textContent=item.name; row.replaceChild(namePart,inp);
+  };
+  inp.onblur=finish;
+  inp.onkeydown=e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){inp.value=item.name;inp.blur();}};
 }
 
 // ── VIEW ORDER ────────────────────────────────────
