@@ -634,7 +634,7 @@
     <button class="btn-lobby-primary" onclick="joinList()">🤝 הצטרף לרשימה</button>
 
     <div class="lobby-status" id="lobbyStatus"></div>
-    <button class="btn-lobby-secondary" onclick="openHelp()" style="margin-top:12px;font-size:13px;">❓ הוראות שימוש</button>
+    <button class="btn-lobby-secondary" onclick="openHelp()" style="margin-top:12px;font-size:13px;">✨ הוראות שימוש</button>
   </div>
 </div>
 
@@ -865,11 +865,11 @@
 <div class="overlay" id="helpOverlay" style="display:none;z-index:1100;" onclick="closeHelp()">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
     <button class="modal-close" onclick="closeHelp()">✕</button>
-    <div class="modal-title">❓ הוראות שימוש</div>
+    <div class="modal-title">✨ הוראות שימוש</div>
 
     <div class="help-section">
       <div class="help-section-title">בנק הפריטים</div>
-      <div class="help-row"><div class="help-icon">✍️</div><div class="help-text"><strong>הוספת פריט</strong> — כתוב שם ולחץ "הוסף +". האפליקציה מנחשת קטגוריה אוטומטית (❓ = ממתין לאישורך)</div></div>
+      <div class="help-row"><div class="help-icon">✍️</div><div class="help-text"><strong>הוספת פריט</strong> — כתוב שם ולחץ "הוסף +". האפליקציה מנחשת קטגוריה אוטומטית (✨ = ממתין לאישורך)</div></div>
       <div class="help-row"><div class="help-icon">👆</div><div class="help-text"><strong>העברה לרשימה</strong> — לחיצה קצרה על פריט בבנק</div></div>
       <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>עריכה / מחיקה</strong> — לחיצה ארוכה על פריט בבנק</div></div>
     </div>
@@ -1608,8 +1608,10 @@ function addBasketToCart(basket) {
         added++;
       }
     } else if (!state.cart.some(c => c.name === itemName)) {
-      // Not in bank either — add directly to cart as new
-      state.cart.push({id:uid(), name:itemName, category:"כללי", note:"", qty:0, status:null});
+      // Not in bank — create new item with ✨ and add straight to cart
+      const cat = guessCategory(itemName) || "כללי";
+      const newItem = {id:uid(), name:itemName, category:cat, autoClassified:true};
+      state.cart.push({...newItem, note:"", qty:0, status:null});
       added++;
     }
   });
@@ -2025,7 +2027,7 @@ function setBankShow(mode) {
 function confirmAutoClassified(id) {
   const item = state.bank.find(i=>i.id===id); if(!item) return;
   showConfirm({
-    icon: "❓",
+    icon: "✨",
     title: "שיוך קטגוריה",
     msg: `לשייך את "${item.name}" לקטגוריה "${item.category}"?`,
     okLabel: "אישור ✓",
@@ -2082,7 +2084,7 @@ function buildBankFilterMenu() {
   };
 
   if (hasUnconfirmed) {
-    addOption("❓ ממתין לאישור", "unconfirmed", "#a07800");
+    addOption("✨ ממתין לאישור", "unconfirmed", "#a07800");
     const hr = document.createElement("div"); hr.style.cssText="height:1px;background:var(--border);margin:4px 0;"; menu.appendChild(hr);
   }
   cats.forEach(cat => addOption(cat, cat));
@@ -2153,7 +2155,7 @@ function renderBank() {
     el.className = "bank-item" + (item._inCart ? " in-cart" : "");
     const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
     if (!item._inCart && item.autoClassified) {
-      const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="❓";
+      const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="✨";
       badge.title=`סווג אוטומטית: ${item.category} — לחץ לאישור`;
       badge.onpointerdown=e=>{ e.stopPropagation(); };
       badge.onpointerup=e=>{ e.stopPropagation(); };
@@ -2400,6 +2402,18 @@ function buildCartItem(item) {
   noteInput.onblur=closeNoteEdit;
   noteInput.onkeydown=e=>{ if(e.key==="Enter"||e.key==="Escape")noteInput.blur(); };
 
+  // Long press to edit
+  let cartLongTimer = null;
+  wrap.addEventListener("pointerdown", () => {
+    cartLongTimer = setTimeout(() => {
+      cartLongTimer = null;
+      openEditModal(item);
+    }, 500);
+  });
+  wrap.addEventListener("pointerup",     () => clearTimeout(cartLongTimer));
+  wrap.addEventListener("pointerleave",  () => clearTimeout(cartLongTimer));
+  wrap.addEventListener("pointercancel", () => clearTimeout(cartLongTimer));
+
   noteWrap.appendChild(noteInput);
   wrap.appendChild(row);
   wrap.appendChild(noteDisplay);
@@ -2473,7 +2487,7 @@ function confirmResetCart() {
 }
 function doResetCart() {
   pushUndo();
-  state.cart.forEach(item => { if(!state.bank.some(b=>b.id===item.id)) state.bank.push({id:item.id,name:item.name,category:item.category}); });
+  state.cart.forEach(item => { if(!state.bank.some(b=>b.id===item.id)) state.bank.push({id:item.id,name:item.name,category:item.category,autoClassified:item.autoClassified||false}); });
   state.cart = [];
   save(); renderBank(); renderCart();
   showToast("✅ הרשימה אופסה");
@@ -2500,7 +2514,8 @@ function confirmRemoveFromSavedLists(code) {
 
 function removeFromCart(id) {
   pushUndo(); const item=state.cart.find(i=>i.id===id); if(!item)return;
-  state.cart=state.cart.filter(i=>i.id!==id); state.bank.push({id:item.id,name:item.name,category:item.category});
+  state.cart=state.cart.filter(i=>i.id!==id);
+  state.bank.push({id:item.id, name:item.name, category:item.category, autoClassified:item.autoClassified||false});
   save(); renderBank(); renderCart();
 }
 function setCartStatus(id,status) {
@@ -2546,9 +2561,12 @@ function openEditModal(item){ editTarget=item; document.getElementById("editName
 function closeEditModal(){ document.getElementById("editOverlay").style.display="none"; editTarget=null; }
 function saveEdit(){
   if(!editTarget)return; const name=document.getElementById("editName").value.trim(); const cat=document.getElementById("editCat").value; if(!name)return;
-  pushUndo(); const idx=state.bank.findIndex(i=>i.id===editTarget.id);
-  if(idx!==-1){state.bank[idx].name=name;state.bank[idx].category=cat;state.bank[idx].autoClassified=false;}
-  save(); renderBank(); closeEditModal();
+  pushUndo();
+  const bankIdx=state.bank.findIndex(i=>i.id===editTarget.id);
+  if(bankIdx!==-1){state.bank[bankIdx].name=name;state.bank[bankIdx].category=cat;state.bank[bankIdx].autoClassified=false;}
+  const cartIdx=state.cart.findIndex(i=>i.id===editTarget.id);
+  if(cartIdx!==-1){state.cart[cartIdx].name=name;state.cart[cartIdx].category=cat;state.cart[cartIdx].autoClassified=false;}
+  save(); renderBank(); renderCart(); closeEditModal();
 }
 
 // ── FINISH ────────────────────────────────────────
@@ -2567,7 +2585,7 @@ function finishKeepPending(){
 }
 function doFinish(pendingToReturn){
   pushUndo(); const done=state.cart.filter(i=>i.status==="done"); const cancel=state.cart.filter(i=>i.status==="cancel");
-  [...done,...pendingToReturn].forEach(i=>state.bank.push({id:i.id,name:i.name,category:i.category}));
+  [...done,...pendingToReturn].forEach(i=>state.bank.push({id:i.id,name:i.name,category:i.category,autoClassified:i.autoClassified||false}));
   state.cart=cancel; save(); renderBank(); renderCart(); showToast("הקניות הסתיימו!");
 }
 
@@ -2603,7 +2621,7 @@ function buildCatFilterMenu() {
     dd.appendChild(opt);
   };
 
-  if (hasUnconfirmed) { mkOption("❓ ממתין לאישור", "unconfirmed", true); dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"})); }
+  if (hasUnconfirmed) { mkOption("✨ ממתין לאישור", "unconfirmed", true); dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"})); }
   usedCats.forEach(cat => mkOption(cat, cat));
 
   if (catActiveFilters.size > 0) {
@@ -2676,6 +2694,8 @@ function saveCatTagName(oldCat,newName){
   pushUndo(); state.categories=state.categories.map(c=>c===oldCat?t:c);
   state.bank=state.bank.map(i=>i.category===oldCat?{...i,category:t}:i);
   state.cart=state.cart.map(i=>i.category===oldCat?{...i,category:t}:i);
+  // Update WORD_TO_CAT so future guesses use the new name
+  Object.keys(WORD_TO_CAT).forEach(w=>{ if(WORD_TO_CAT[w]===oldCat) WORD_TO_CAT[w]=t; });
   save();renderCatModal();renderBank();renderCart();
 }
 function addCategory(){
@@ -2705,7 +2725,7 @@ function renderCatItems(){
     if(item._src==="bank"){namePart.style.cursor="text";namePart.onclick=()=>startEditCatItemName(item,row,namePart,sel);}
     row.appendChild(namePart);
     if(item.autoClassified&&item._src==="bank"){
-      const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="❓"; badge.title="סווג אוטומטית — לחץ לאישור";
+      const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="✨"; badge.title="סווג אוטומטית — לחץ לאישור";
       badge.onclick=()=>{ confirmAutoClassified(item.id); };
       row.appendChild(badge);
     }
