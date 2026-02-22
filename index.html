@@ -1022,6 +1022,8 @@ CAT_RULES.forEach(r => r.words.forEach(w => { WORD_TO_CAT[w.trim().toLowerCase()
 function guessCategory(name) {
   if (!name) return null;
   const lower = name.trim().toLowerCase();
+  // Learned mappings take priority over built-in dictionary
+  if (state.learnedCatMap && state.learnedCatMap[lower]) return state.learnedCatMap[lower];
   if (WORD_TO_CAT[lower]) return WORD_TO_CAT[lower];
   const sorted = Object.keys(WORD_TO_CAT).sort((a,b) => b.length - a.length);
   for (const kw of sorted) { if (lower.includes(kw) || kw.includes(lower)) return WORD_TO_CAT[kw]; }
