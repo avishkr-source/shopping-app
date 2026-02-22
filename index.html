@@ -1239,19 +1239,22 @@ async function joinList() {
 
 function enterList(code, listName) {
   currentListId = code;
-  if (listName) state.listName = listName;
+  // Reset state fully before loading new list
+  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName: listName||"", baskets:[] };
+  undoStack.length = 0;
+  document.getElementById("undoBtn").disabled = true;
+  renderBank(); renderCart();
   // Save to history
-  addToSavedLists(code, state.listName || listName || "רשימת קניות");
+  addToSavedLists(code, listName || "רשימת קניות");
   try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: code })); } catch(e){}
   document.getElementById("lobby").style.display = "none";
   document.getElementById("appHeader").style.display = "block";
   document.getElementById("appMain").style.display = "block";
   document.getElementById("shareCodeDisplay").textContent = code;
-  document.getElementById("headerListName").textContent = state.listName || "רשימת קניות";
+  document.getElementById("headerListName").textContent = listName || "רשימת קניות";
   syncBankSortButtons();
   applyViewOrder();
   subscribeToList(code);
-  // Show welcome only on first ever use
   try {
     if (!localStorage.getItem("shoppingApp_welcomed")) {
       setTimeout(openWelcome, 600);
