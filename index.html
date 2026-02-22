@@ -1029,6 +1029,13 @@ function guessCategory(name) {
   return null;
 }
 
+// When user manually assigns a category — remember it for future guesses
+function learnCategory(name, cat) {
+  if (!name || !cat || cat === "כללי") return;
+  const lower = name.trim().toLowerCase();
+  WORD_TO_CAT[lower] = cat;
+}
+
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
@@ -2020,7 +2027,7 @@ function confirmAutoClassified(id) {
     okColor: "var(--blue)",
     onOk: () => {
       const idx = state.bank.findIndex(i=>i.id===id);
-      if (idx!==-1) { state.bank[idx].autoClassified=false; save(); renderBank(); if(catOverlayOpen) renderCatItems(); }
+      if (idx!==-1) { learnCategory(item.name, item.category); state.bank[idx].autoClassified=false; save(); renderBank(); if(catOverlayOpen) renderCatItems(); }
       showToast("✅ קטגוריה אושרה");
     }
   });
@@ -2568,6 +2575,7 @@ function deleteFromBankViaEdit() {
 function saveEdit(){
   if(!editTarget)return; const name=document.getElementById("editName").value.trim(); const cat=document.getElementById("editCat").value; if(!name)return;
   pushUndo();
+  learnCategory(name, cat);
   const bankIdx=state.bank.findIndex(i=>i.id===editTarget.id);
   if(bankIdx!==-1){state.bank[bankIdx].name=name;state.bank[bankIdx].category=cat;state.bank[bankIdx].autoClassified=false;}
   const cartIdx=state.cart.findIndex(i=>i.id===editTarget.id);
@@ -2770,6 +2778,7 @@ function renderCatTags(){
           sel.onchange=()=>{
             pushUndo();
             const newCat=sel.value;
+            learnCategory(item.name, newCat);
             if(item._src==="bank"){ const idx=state.bank.findIndex(x=>x.id===item.id); if(idx!==-1){state.bank[idx].category=newCat;state.bank[idx].autoClassified=false;} }
             else { const idx=state.cart.findIndex(x=>x.id===item.id); if(idx!==-1) state.cart[idx].category=newCat; }
             item.category=newCat; save(); renderBank(); renderCart(); renderCatTags();
