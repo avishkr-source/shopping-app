@@ -1034,13 +1034,15 @@ function learnCategory(name, cat) {
   if (!name || !cat || cat === "כללי") return;
   const lower = name.trim().toLowerCase();
   WORD_TO_CAT[lower] = cat;
+  if (!state.learnedCatMap) state.learnedCatMap = {};
+  state.learnedCatMap[lower] = cat;
 }
 
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
 const DEFAULT_CATS = ["כללי","ירקות ופירות","מוצרי חלב","בשר ודגים","לחם ומאפים","שתייה","חטיפים וממתקים","ניקיון ותכשירים","קפואים","שימורים"];
-let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName:"", baskets:[] };
+let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName:"", baskets:[], learnedCatMap:{} };
 
 // Firebase state
 let currentListId  = null;
@@ -1086,6 +1088,7 @@ async function saveToFirestore() {
     bank: state.bank, cart: state.cart, categories: state.categories,
     bankSort: state.bankSort, catSort: state.catSort, viewOrder: state.viewOrder,
     listName: state.listName || "", baskets: state.baskets || [],
+    learnedCatMap: state.learnedCatMap || {},
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   const hash = stateHash();
@@ -1100,14 +1103,12 @@ async function saveToFirestore() {
 }
 
 function applyRemoteData(data) {
-  // Skip remote updates if we have a pending local save (prevents flicker and lost items)
   if (saveTimer) return;
-
   const incoming = JSON.stringify({
     bank: data.bank, cart: data.cart, categories: data.categories,
     bankSort: data.bankSort, catSort: data.catSort, viewOrder: data.viewOrder
   });
-  if (incoming === lastSavedHash) return; // our own write, skip
+  if (incoming === lastSavedHash) return;
   isSyncing = true;
   if (data.bank)       state.bank       = data.bank;
   if (data.cart)       state.cart       = data.cart;
@@ -1121,6 +1122,11 @@ function applyRemoteData(data) {
     if (el) el.textContent = data.listName || "רשימת קניות";
   }
   if (data.baskets) state.baskets = data.baskets;
+  // Restore learned category mappings and apply to WORD_TO_CAT
+  if (data.learnedCatMap) {
+    state.learnedCatMap = data.learnedCatMap;
+    Object.entries(data.learnedCatMap).forEach(([word, cat]) => { WORD_TO_CAT[word] = cat; });
+  }
   lastSavedHash = incoming;
   try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: currentListId })); } catch(e){}
   renderBank(); renderCart(); updateHeader(); applyViewOrder(); syncBankSortButtons();
