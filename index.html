@@ -1122,6 +1122,8 @@ function applyRemoteData(data) {
     state.listName = data.listName;
     const el = document.getElementById("headerListName");
     if (el) el.textContent = data.listName || "רשימת קניות";
+    // Update the saved list entry with the real name
+    if (data.listName && currentListId) addToSavedLists(currentListId, data.listName);
   }
   if (data.baskets) state.baskets = data.baskets;
   // Restore learned category mappings and apply to WORD_TO_CAT
