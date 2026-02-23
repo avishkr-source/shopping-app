@@ -244,7 +244,15 @@
     text-transform:uppercase; color:var(--text-dim);
     padding:6px 2px 2px 0; margin-top:4px;
     border-bottom:1px solid var(--border); margin-bottom:3px;
+    display:flex; align-items:center; justify-content:space-between;
   }
+  .bank-cat-add-all {
+    font-size:11px; font-weight:700; color:var(--blue); background:var(--blue-pale);
+    border:1.5px solid var(--blue-l); border-radius:7px; padding:1px 8px;
+    cursor:pointer; white-space:nowrap; letter-spacing:0; text-transform:none;
+    transition:all .15s; line-height:1.6;
+  }
+  .bank-cat-add-all:active { background:var(--blue-l); }
   .bank-grid { display:flex; flex-wrap:wrap; gap:6px; }
   .bank-item {
     background:var(--bg2); border:1.5px solid var(--border); border-radius:10px;
@@ -2152,7 +2160,15 @@ function renderBank() {
   items.forEach(item => {
     if (state.bankSort==="cat") {
       const cat = item.category||"כללי";
-      if (cat!==lastCat) { lastCat=cat; const hdr=document.createElement("div"); hdr.className="bank-cat-header"; hdr.textContent=cat; grid.appendChild(hdr); }
+      if (cat!==lastCat) {
+        lastCat=cat;
+        const hdr=document.createElement("div"); hdr.className="bank-cat-header";
+        const label=document.createElement("span"); label.textContent=cat; hdr.appendChild(label);
+        const addAllBtn=document.createElement("button"); addAllBtn.className="bank-cat-add-all"; addAllBtn.textContent="הוסף הכל +";
+        addAllBtn.onclick=()=>addCategoryToCart(cat);
+        hdr.appendChild(addAllBtn);
+        grid.appendChild(hdr);
+      }
     }
     const el = document.createElement("div");
     el.className = "bank-item" + (item._inCart ? " in-cart" : "");
@@ -2369,7 +2385,7 @@ function buildCartItem(item) {
   noteToggle.style.marginRight = "24px";
   const btnCheck=document.createElement("button"); btnCheck.className="btn-icon btn-check"+(item.status==="done"?" active":""); btnCheck.textContent="✓"; btnCheck.onclick=()=>setCartStatus(item.id,"done");
   const btnX=document.createElement("button"); btnX.className="btn-icon btn-xmark"+(item.status==="cancel"?" active":""); btnX.textContent="✕"; btnX.onclick=()=>setCartStatus(item.id,"cancel");
-  const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>confirmRemoveFromCart(item.id);
+  const btnMinus=document.createElement("button"); btnMinus.className="btn-icon btn-minus"; btnMinus.textContent="−"; btnMinus.onclick=()=>removeFromCart(item.id);
 
   // Row: RIGHT→LEFT in RTL: [name(flex1)] [qtyGroup] [✏️] [✓] [✕] [−]
   row.appendChild(name);
@@ -2494,6 +2510,18 @@ function doResetCart() {
   state.cart = [];
   save(); renderBank(); renderCart();
   showToast("✅ הרשימה אופסה");
+}
+
+function addCategoryToCart(cat) {
+  pushUndo();
+  const items = state.bank.filter(i=>(i.category||"כללי")===cat && !state.cart.some(c=>c.id===i.id));
+  if (!items.length) { showToast("כל הפריטים כבר ברשימה"); return; }
+  items.forEach(item => {
+    state.bank.splice(state.bank.indexOf(item), 1);
+    state.cart.push({...item, note:"", qty:0, status:null});
+  });
+  save(); renderBank(); renderCart();
+  showToast(`✅ ${items.length} פריטים נוספו לרשימה`);
 }
 
 function confirmRemoveFromCart(id) {
