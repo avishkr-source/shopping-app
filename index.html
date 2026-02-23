@@ -783,7 +783,7 @@
 <div class="multiselect-bar" id="multiselectBar" style="display:none">
   <span class="multiselect-bar-count" id="multiselectCount">0 נבחרו</span>
   <button class="multiselect-bar-btn" onclick="multiSelectAddToCart()">+ לרשימה</button>
-  <button class="multiselect-bar-btn" onclick="multiSelectAddToBasket()">🛒 לסל</button>
+  <button class="multiselect-bar-btn" onclick="multiSelectAddToBasket()">🧺 לסל</button>
   <button class="multiselect-bar-btn danger" onclick="multiSelectDelete()">🗑️ מחק</button>
   <button class="multiselect-bar-btn" onclick="exitMultiSelect()" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);">✕</button>
 </div>
@@ -872,6 +872,16 @@
     </div>
     <div class="welcome-footer">קניה נעימה 🛒</div>
     <button class="btn-primary" onclick="closeWelcome()">בואו נתחיל!</button>
+  </div>
+</div>
+
+<!-- MULTISELECT ADD TO BASKET PICKER -->
+<div class="overlay" id="basketPickerOverlay" style="display:none;z-index:1200;" onclick="closeBasketPicker()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:360px;">
+    <button class="modal-close" onclick="closeBasketPicker()">✕</button>
+    <div class="modal-title">🧺 הוסף לסל</div>
+    <div id="basketPickerList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;max-height:300px;overflow-y:auto;"></div>
+    <button class="btn-secondary" onclick="closeBasketPicker()">ביטול</button>
   </div>
 </div>
 
@@ -2127,7 +2137,45 @@ function multiSelectAddToCart() {
 }
 function multiSelectAddToBasket() {
   if (!bankSelected.size) return;
-  showToast("🛒 פיצ'ר זמין בקרוב");
+  const baskets = state.baskets || [];
+  if (!baskets.length) {
+    showToast("אין סלים — צור סל קודם ב-🧺 סלים"); return;
+  }
+  // Render picker
+  const list = document.getElementById("basketPickerList");
+  list.innerHTML = "";
+  baskets.forEach(basket => {
+    const btn = document.createElement("button");
+    btn.style.cssText = "width:100%;text-align:right;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);transition:background .15s;display:flex;align-items:center;gap:8px;";
+    btn.onmouseenter = () => btn.style.background = "var(--blue-pale)";
+    btn.onmouseleave = () => btn.style.background = "var(--bg2)";
+    const icon = document.createElement("span"); icon.textContent = "🧺";
+    const info = document.createElement("div"); info.style.flex = "1";
+    const name = document.createElement("div"); name.textContent = basket.name;
+    const count = document.createElement("div"); count.style.cssText = "font-size:11px;color:var(--text-dim);font-weight:400;"; count.textContent = `${(basket.items||[]).length} פריטים`;
+    info.appendChild(name); info.appendChild(count);
+    btn.appendChild(icon); btn.appendChild(info);
+    btn.onclick = () => addSelectedToBasket(basket.id);
+    list.appendChild(btn);
+  });
+  document.getElementById("basketPickerOverlay").style.display = "flex";
+}
+function closeBasketPicker() {
+  document.getElementById("basketPickerOverlay").style.display = "none";
+}
+function addSelectedToBasket(basketId) {
+  const idx = (state.baskets||[]).findIndex(b=>b.id===basketId);
+  if (idx === -1) return;
+  const basket = state.baskets[idx];
+  const selectedNames = state.bank.filter(i=>bankSelected.has(i.id)).map(i=>i.name);
+  const existing = new Set(basket.items || []);
+  const newItems = selectedNames.filter(n=>!existing.has(n));
+  closeBasketPicker();
+  if (!newItems.length) { showToast("כל הפריטים כבר בסל"); return; }
+  pushUndo();
+  state.baskets[idx].items = [...(basket.items||[]), ...newItems];
+  exitMultiSelect(); save();
+  showToast(`✅ ${newItems.length} פריטים נוספו לסל "${basket.name}"`);
 }
 function multiSelectDelete() {
   if (!bankSelected.size) return;
