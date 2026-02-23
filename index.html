@@ -253,6 +253,18 @@
     transition:all .15s; line-height:1.6;
   }
   .bank-cat-add-all:active { background:var(--blue-l); }
+  /* Multi-select */
+  .btn-multiselect { flex-shrink:0; background:var(--bg3); border:1.5px solid var(--border); border-radius:20px; padding:6px 12px; font-size:11px; font-weight:600; color:var(--text-mid); cursor:pointer; white-space:nowrap; font-family:inherit; transition:all .15s; }
+  .btn-multiselect.active { background:var(--blue-pale); border-color:var(--blue-l); color:var(--blue); }
+  .bank-item.selected { border-color:var(--blue); background:var(--blue-pale); box-shadow:0 0 0 2px var(--blue-l); }
+  .bank-item.selected::before { content:"✓"; position:absolute; top:3px; left:5px; font-size:10px; font-weight:900; color:var(--blue); }
+  .bank-item { position:relative; }
+  .multiselect-bar { position:fixed; bottom:0; left:0; right:0; z-index:900; background:#1e3a8a; color:#fff; display:flex; align-items:center; gap:8px; padding:10px 14px; box-shadow:0 -4px 20px rgba(0,0,0,.25); animation:slideUp .2s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .multiselect-bar-count { font-size:13px; font-weight:700; flex:1; }
+  .multiselect-bar-btn { background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.3); border-radius:9px; color:#fff; font-size:12px; font-weight:700; padding:7px 12px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .15s; }
+  .multiselect-bar-btn:active { background:rgba(255,255,255,.3); }
+  .multiselect-bar-btn.danger { background:rgba(220,50,50,.25); border-color:rgba(255,120,120,.4); }
   .bank-grid { display:flex; flex-wrap:wrap; gap:6px; }
   .bank-item {
     background:var(--bg2); border:1.5px solid var(--border); border-radius:10px;
@@ -712,6 +724,7 @@
       <div style="display:flex;gap:6px;align-items:center;position:relative;">
         <input class="bank-search-input" id="bankSearchInput" placeholder="🔍 חיפוש בפריטים..." type="text" oninput="renderBank()" autocomplete="off">
         <button id="bankFilterBtn" onclick="toggleBankFilterMenu(event)" style="flex-shrink:0;background:var(--bg3);border:1.5px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--text-mid);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;">🔽 סינון</button>
+        <button id="bankMultiSelectBtn" class="btn-multiselect" onclick="toggleMultiSelect()">☑️ בחירה מרובה</button>
         <div id="bankFilterMenu" onclick="event.stopPropagation()" style="display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:500;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px var(--shadow);min-width:170px;padding:6px;animation:slideIn .12s ease;"></div>
       </div>
     </div>
@@ -761,8 +774,18 @@
 <!-- CONTEXT MENU -->
 <div class="ctx-menu" id="ctxMenu" style="display:none">
   <div class="ctx-header" id="ctxName"></div>
+  <button class="ctx-btn" onclick="ctxStartSelect()">☑️ בחירה מרובה</button>
   <button class="ctx-btn ctx-edit" onclick="ctxEdit()">✏️ עריכה</button>
   <button class="ctx-btn ctx-del"  onclick="ctxDelete()">🗑️ הסרה</button>
+</div>
+
+<!-- MULTISELECT ACTION BAR -->
+<div class="multiselect-bar" id="multiselectBar" style="display:none">
+  <span class="multiselect-bar-count" id="multiselectCount">0 נבחרו</span>
+  <button class="multiselect-bar-btn" onclick="multiSelectAddToCart()">+ לרשימה</button>
+  <button class="multiselect-bar-btn" onclick="multiSelectAddToBasket()">🛒 לסל</button>
+  <button class="multiselect-bar-btn danger" onclick="multiSelectDelete()">🗑️ מחק</button>
+  <button class="multiselect-bar-btn" onclick="exitMultiSelect()" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);">✕</button>
 </div>
 
 <!-- EDIT MODAL -->
@@ -2054,6 +2077,76 @@ function confirmAutoClassified(id) {
 // ── BANK FILTER ───────────────────────────────────
 const bankActiveFilters = new Set(); // "unconfirmed" | category name
 
+// ── MULTI-SELECT ──────────────────────────────────
+let bankSelectMode = false;
+const bankSelected = new Set(); // item ids
+
+function toggleMultiSelect() {
+  bankSelectMode ? exitMultiSelect() : enterMultiSelect();
+}
+function enterMultiSelect(preSelectId) {
+  bankSelectMode = true;
+  bankSelected.clear();
+  if (preSelectId) bankSelected.add(preSelectId);
+  document.getElementById("bankMultiSelectBtn").classList.add("active");
+  renderBank();
+  updateMultiSelectBar();
+}
+function exitMultiSelect() {
+  bankSelectMode = false;
+  bankSelected.clear();
+  document.getElementById("bankMultiSelectBtn").classList.remove("active");
+  document.getElementById("multiselectBar").style.display = "none";
+  renderBank();
+}
+function toggleBankItemSelect(id) {
+  bankSelected.has(id) ? bankSelected.delete(id) : bankSelected.add(id);
+  // Update just this item's visual without full re-render
+  document.querySelectorAll(".bank-item").forEach(el => {
+    if (el.dataset.id === id) el.classList.toggle("selected", bankSelected.has(id));
+  });
+  updateMultiSelectBar();
+}
+function updateMultiSelectBar() {
+  const bar = document.getElementById("multiselectBar");
+  const count = bankSelected.size;
+  document.getElementById("multiselectCount").textContent = count + " נבחרו";
+  bar.style.display = count > 0 ? "flex" : "none";
+}
+function multiSelectAddToCart() {
+  if (!bankSelected.size) return;
+  pushUndo();
+  bankSelected.forEach(id => {
+    const idx = state.bank.findIndex(i=>i.id===id); if(idx===-1) return;
+    const item = state.bank.splice(idx,1)[0];
+    if (!state.cart.some(c=>c.id===id)) state.cart.push({...item, note:"", qty:0, status:null});
+  });
+  const n = bankSelected.size;
+  exitMultiSelect(); save(); renderBank(); renderCart();
+  showToast(`✅ ${n} פריטים נוספו לרשימה`);
+}
+function multiSelectAddToBasket() {
+  if (!bankSelected.size) return;
+  showToast("🛒 פיצ'ר זמין בקרוב");
+}
+function multiSelectDelete() {
+  if (!bankSelected.size) return;
+  const n = bankSelected.size;
+  showConfirm({ icon:"🗑️", title:"מחיקה", msg:`למחוק ${n} פריטים לצמיתות?`, okLabel:"מחק", okColor:"var(--red)",
+    onOk: () => {
+      pushUndo();
+      state.bank = state.bank.filter(i=>!bankSelected.has(i.id));
+      exitMultiSelect(); save(); renderBank();
+      showToast(`🗑️ ${n} פריטים נמחקו`);
+    }
+  });
+}
+function ctxStartSelect() {
+  const id = ctxTarget?.id;
+  closeCtx();
+  enterMultiSelect(id);
+}
+
 function toggleBankFilterMenu(e) {
   e.stopPropagation();
   const menu = document.getElementById("bankFilterMenu");
@@ -2171,7 +2264,8 @@ function renderBank() {
       }
     }
     const el = document.createElement("div");
-    el.className = "bank-item" + (item._inCart ? " in-cart" : "");
+    el.className = "bank-item" + (item._inCart ? " in-cart" : "") + (bankSelectMode && bankSelected.has(item.id) ? " selected" : "");
+    el.dataset.id = item.id;
     const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
     if (!item._inCart && item.autoClassified) {
       const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="✨";
@@ -2184,10 +2278,14 @@ function renderBank() {
       const catLabel=document.createElement("span"); catLabel.className="bank-item-cat"; catLabel.textContent=item.category; el.appendChild(catLabel);
     }
     if (!item._inCart) {
-      el.addEventListener("pointerdown",e=>{ e.stopPropagation(); startLong(e,item); });
-      el.addEventListener("pointerup",  e=>{ e.stopPropagation(); endLong(item); });
-      el.addEventListener("pointerleave",()=>cancelLong());
-      el.addEventListener("pointercancel",()=>cancelLong());
+      if (bankSelectMode) {
+        el.addEventListener("click", () => toggleBankItemSelect(item.id));
+      } else {
+        el.addEventListener("pointerdown",e=>{ e.stopPropagation(); startLong(e,item); });
+        el.addEventListener("pointerup",  e=>{ e.stopPropagation(); endLong(item); });
+        el.addEventListener("pointerleave",()=>cancelLong());
+        el.addEventListener("pointercancel",()=>cancelLong());
+      }
     }
     grid.appendChild(el);
   });
