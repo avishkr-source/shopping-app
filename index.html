@@ -38,13 +38,15 @@
   .lobby {
     position:fixed; inset:0; z-index:1000;
     background:linear-gradient(135deg,#e8eeff 0%,#f5f0ff 100%);
-    display:flex; align-items:center; justify-content:center; padding:20px;
+    display:flex; align-items:flex-start; justify-content:center; padding:16px;
+    overflow-y:auto;
   }
   .lobby-card {
-    background:#fff; border-radius:24px; padding:28px 22px;
+    background:#fff; border-radius:24px; padding:24px 20px;
     width:100%; max-width:380px;
     box-shadow:0 20px 60px rgba(60,80,160,.18);
     animation:slideIn .25s ease;
+    margin:auto;
   }
   .lobby-logo { font-size:44px; text-align:center; margin-bottom:6px; }
   .lobby-title { font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
@@ -3121,6 +3123,78 @@ function toggleViewOrder(){ state.viewOrder=state.viewOrder==="bankFirst"?"cartF
   // Show lobby
   document.getElementById("lobby").style.display = "flex";
 })();
+
+// ═══════════════════════════════════════════════════
+// ANDROID BACK BUTTON HANDLING
+// ═══════════════════════════════════════════════════
+let lastBackTap = 0;
+
+// Push a dummy state so we intercept popstate
+history.pushState({ app: true }, "");
+
+window.addEventListener("popstate", () => {
+  // Always re-push so we keep intercepting future back presses
+  history.pushState({ app: true }, "");
+  handleBackPress();
+});
+
+function handleBackPress() {
+  // Priority order: most specific → least specific
+
+  // 1. Confirm dialog
+  const confirmOverlay = document.getElementById("confirmOverlay");
+  if (confirmOverlay?.style.display !== "none") {
+    closeConfirm(); return;
+  }
+
+  // 2. Context menu
+  const ctxMenu = document.getElementById("ctxMenu");
+  if (ctxMenu?.style.display !== "none") {
+    closeCtx(); return;
+  }
+
+  // 3. Any open overlay/modal (scan all)
+  const overlays = [
+    { id:"editOverlay",         close: closeEditModal },
+    { id:"importOverlay",       close: closeImportModal },
+    { id:"basketsOverlay",      close: closeBasketsModal },
+    { id:"basketEditOverlay",   close: closeBasketEditModal },
+    { id:"catOverlay",          close: closeCatModal },
+    { id:"shareOverlay",        close: closeShareModal },
+    { id:"finishOverlay",       close: closeFinishModal },
+    { id:"helpOverlay",         close: closeHelp },
+    { id:"basketPickerOverlay", close: closeBasketPicker },
+    { id:"welcomeOverlay",      close: closeWelcome },
+  ];
+  for (const { id, close } of overlays) {
+    const el = document.getElementById(id);
+    if (el && el.style.display !== "none") { close(); return; }
+  }
+
+  // 4. Multiselect mode
+  if (bankSelectMode) { exitMultiSelect(); return; }
+
+  // 5. In the app → go back to lobby (with confirm)
+  if (currentListId) {
+    showConfirm({
+      icon: "🏠", title: "חזרה ללובי",
+      msg: "לחזור לדף הבית? הנתונים שמורים ומסונכרנים.",
+      okLabel: "חזור", okColor: "var(--blue)",
+      onOk: () => leaveList()
+    });
+    return;
+  }
+
+  // 6. In lobby → double-tap to exit
+  const now = Date.now();
+  if (now - lastBackTap < 2000) {
+    // Second tap — allow exit
+    history.go(-1);
+  } else {
+    lastBackTap = now;
+    showToast("לחץ Back שוב ליציאה מהאפליקציה");
+  }
+}
 </script>
 </body>
 </html>
