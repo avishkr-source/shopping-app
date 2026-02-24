@@ -1169,6 +1169,7 @@ function applyRemoteData(data) {
     if (data.listName && currentListId) addToSavedLists(currentListId, data.listName);
   }
   if (data.baskets) state.baskets = data.baskets;
+  if (data.ownerUid !== undefined) state.ownerUid = data.ownerUid;
   // Restore learned category mappings and apply to WORD_TO_CAT
   if (data.learnedCatMap) {
     state.learnedCatMap = data.learnedCatMap;
@@ -1270,6 +1271,7 @@ async function createList() {
       bank: state.bank, cart: state.cart, categories: state.categories,
       bankSort: state.bankSort, catSort: state.catSort, viewOrder: state.viewOrder,
       listName: listName,
+      ownerUid: auth.currentUser?.uid || null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -2682,13 +2684,103 @@ function confirmRemoveFromCart(id) {
   });
 }
 
+function isOwner() {
+  return state.ownerUid && auth.currentUser && state.ownerUid === auth.currentUser.uid;
+}
+
 function confirmRemoveFromSavedLists(code) {
-  showConfirm({
-    icon: "🗑️", title: "הסרת רשימה",
-    msg: "הרשימה תוסר מהמכשיר שלך. הנתונים ישמרו ותוכל להצטרף שוב עם הקוד.",
-    okLabel: "הסר", okColor: "var(--red)",
-    onOk: () => removeFromSavedLists(code)
+  // Need to load ownerUid from Firestore to know if this user is the owner
+  db.collection("lists").doc(code).get().then(snap => {
+    if (!snap.exists) { removeFromSavedLists(code); renderSavedLists(); return; }
+    const data = snap.data();
+    const myUid = auth.currentUser?.uid;
+    const isOwnerOfList = data.ownerUid && myUid && data.ownerUid === myUid;
+    const listName = data.listName || "רשימת קניות";
+
+    if (isOwnerOfList) {
+      // Owner sees 3 options via a custom dialog
+      showOwnerDeleteDialog(code, listName);
+    } else {
+      // Non-owner: just remove locally
+      showConfirm({
+        icon: "🗑️", title: "הסרת רשימה",
+        msg: `הרשימה "${listName}" תוסר מהמכשיר שלך. היא תישאר קיימת ותוכל לחזור אליה עם הקוד.`,
+        okLabel: "הסר", okColor: "var(--red)",
+        onOk: () => removeFromSavedLists(code)
+      });
+    }
+  }).catch(() => {
+    // Fallback if offline
+    showConfirm({
+      icon: "🗑️", title: "הסרת רשימה",
+      msg: "הרשימה תוסר מהמכשיר שלך.",
+      okLabel: "הסר", okColor: "var(--red)",
+      onOk: () => removeFromSavedLists(code)
+    });
   });
+}
+
+function showOwnerDeleteDialog(code, listName) {
+  // Custom 3-option modal
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px;";
+
+  const box = document.createElement("div");
+  box.style.cssText = "background:#fff;border-radius:18px;padding:22px 18px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.25);";
+  box.onclick = e => e.stopPropagation();
+
+  box.innerHTML = `
+    <div style="font-size:28px;text-align:center;margin-bottom:8px;">🗑️</div>
+    <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:6px;">מחיקת רשימה</div>
+    <div style="font-size:13px;color:var(--text-dim);text-align:center;margin-bottom:18px;">אתה המנהל של "<strong>${listName}</strong>". מה תרצה לעשות?</div>
+    <button id="ownerDelAll" style="width:100%;padding:11px;margin-bottom:8px;border:none;border-radius:10px;background:#fee2e2;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ מחק לכולם לצמיתות</button>
+    <button id="ownerDelMe" style="width:100%;padding:11px;margin-bottom:8px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">הסר ממני בלבד</button>
+    <div id="ownerDelCodeWrap" style="display:none;background:#f0f7ff;border:1.5px solid var(--blue-l);border-radius:10px;padding:10px 14px;margin-bottom:8px;text-align:center;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">שמור את הקוד אם תרצה לחזור בעתיד:</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:3px;color:var(--blue);">${code}</div>
+      <button onclick="navigator.clipboard?.writeText('${code}').then(()=>showToast('קוד הועתק!'))" style="margin-top:6px;font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;">📋 העתק קוד</button>
+    </div>
+    <button id="ownerDelConfirmMe" style="display:none;width:100%;padding:11px;margin-bottom:8px;border:none;border-radius:10px;background:#fee2e2;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">אישור — הסר ממני</button>
+    <button id="ownerDelCancel" style="width:100%;padding:9px;border:none;border-radius:10px;background:none;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:inherit;">ביטול</button>
+  `;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  const close = () => document.body.removeChild(overlay);
+  overlay.onclick = close;
+
+  // Delete for everyone
+  box.querySelector("#ownerDelAll").onclick = () => {
+    close();
+    showConfirm({
+      icon:"🗑️", title:"מחיקה לכולם",
+      msg:`למחוק את "${listName}" לצמיתות? כל המשתתפים יאבדו גישה.`,
+      okLabel:"מחק לצמיתות", okColor:"var(--red)",
+      onOk: async () => {
+        try {
+          await db.collection("lists").doc(code).delete();
+          removeFromSavedLists(code);
+          showToast("הרשימה נמחקה");
+        } catch(e) { showToast("שגיאת מחיקה — בדוק חיבור"); }
+      }
+    });
+  };
+
+  // Remove from me — show code warning first
+  box.querySelector("#ownerDelMe").onclick = () => {
+    box.querySelector("#ownerDelCodeWrap").style.display = "block";
+    box.querySelector("#ownerDelConfirmMe").style.display = "block";
+    box.querySelector("#ownerDelMe").style.display = "none";
+  };
+
+  // Confirm remove from me
+  box.querySelector("#ownerDelConfirmMe").onclick = () => {
+    close(); removeFromSavedLists(code);
+    showToast("הרשימה הוסרה מהמכשיר שלך");
+  };
+
+  box.querySelector("#ownerDelCancel").onclick = close;
 }
 
 function removeFromCart(id) {
