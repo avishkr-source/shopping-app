@@ -889,52 +889,67 @@
 
 <!-- HELP MODAL (accessible anytime) -->
 <div class="overlay" id="helpOverlay" style="display:none;z-index:1100;" onclick="closeHelp()">
-  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;max-height:92vh;overflow-y:auto;">
     <button class="modal-close" onclick="closeHelp()">✕</button>
     <div class="modal-title">✨ הוראות שימוש</div>
 
     <div class="help-section">
-      <div class="help-section-title">בנק הפריטים</div>
+      <div class="help-section-title">🗄️ בנק הפריטים</div>
       <div class="help-row"><div class="help-icon">✍️</div><div class="help-text"><strong>הוספת פריט</strong> — כתוב שם ולחץ "הוסף +". האפליקציה מנחשת קטגוריה אוטומטית (✨ = ממתין לאישורך)</div></div>
-      <div class="help-row"><div class="help-icon">👆</div><div class="help-text"><strong>העברה לרשימה</strong> — לחיצה קצרה על פריט בבנק</div></div>
-      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>עריכה / מחיקה</strong> — לחיצה ארוכה על פריט בבנק</div></div>
+      <div class="help-row"><div class="help-icon">👆</div><div class="help-text"><strong>העברה לרשימה</strong> — לחיצה קצרה על פריט</div></div>
+      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>עריכה / מחיקה</strong> — לחיצה ארוכה על פריט פותחת תפריט (עריכת שם + קטגוריה, מחיקה, בחירה מרובה)</div></div>
+      <div class="help-row"><div class="help-icon">+</div><div class="help-text"><strong>הוסף קטגוריה שלמה</strong> — לחץ "הוסף הכל +" ליד שם הקטגוריה להעברת כל הפריטים שלה לרשימה בבת אחת</div></div>
+      <div class="help-row"><div class="help-icon">☑️</div><div class="help-text"><strong>בחירה מרובה</strong> — לחץ "בחירה מרובה" או בחר מהתפריט של לחיצה ארוכה. סמן מספר פריטים ואז: הוסף לרשימה / הוסף לסל / מחק</div></div>
+      <div class="help-row"><div class="help-icon">🔽</div><div class="help-text"><strong>סינון</strong> — סנן לפי קטגוריה או פריטים שממתינים לאישור (✨). אפשר לסמן מספר קטגוריות בפתיחה אחת</div></div>
     </div>
 
     <div class="help-section">
-      <div class="help-section-title">רשימת הקניות</div>
-      <div class="help-row"><div class="help-icon">+</div><div class="help-text"><strong>כמות</strong> — לחץ + לצד הפריט. לחץ על המספר כדי לכתוב ישירות</div></div>
-      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>הערה</strong> — לחץ על העיפרון להוספת הערה. לחץ פעמיים על השם לעריכתו</div></div>
+      <div class="help-section-title">🛒 רשימת הקניות</div>
+      <div class="help-row"><div class="help-icon">+</div><div class="help-text"><strong>כמות</strong> — לחץ + לצד הפריט. לחץ על המספר לעריכה ישירה</div></div>
+      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>עריכת שם / קטגוריה</strong> — לחיצה ארוכה על פריט ברשימה פותחת חלון עריכה</div></div>
+      <div class="help-row"><div class="help-icon">📝</div><div class="help-text"><strong>הערה</strong> — לחץ על העיפרון להוספת הערה</div></div>
       <div class="help-row"><div class="help-icon">✓</div><div class="help-text"><strong>נכנס לעגלה</strong> — לחץ על הוי הירוק</div></div>
       <div class="help-row"><div class="help-icon">✕</div><div class="help-text"><strong>לא רוצים</strong> — לחץ על ה-X האדום</div></div>
-      <div class="help-row"><div class="help-icon">−</div><div class="help-text"><strong>הסרה</strong> — לחץ מינוס להחזרת הפריט לבנק</div></div>
-      <div class="help-row"><div class="help-icon">✅</div><div class="help-text"><strong>סיימתי</strong> — לחץ "סיימתי" וכל הפריטים חוזרים לבנק</div></div>
-      <div class="help-row"><div class="help-icon">🔔</div><div class="help-text"><strong>עדכנתי את הרשימה</strong> — שולח התראה לכל המחוברים. עיגולים = סטטוס קריאה. לחץ שוב לביטול</div></div>
+      <div class="help-row"><div class="help-icon">−</div><div class="help-text"><strong>הסרה</strong> — מחזיר את הפריט לבנק (ניתן לביטול עם "בטל")</div></div>
+      <div class="help-row"><div class="help-icon">✅</div><div class="help-text"><strong>סיימתי</strong> — כל הפריטים חוזרים לבנק. ניתן לבחור מה לעשות עם פריטים שלא טופלו</div></div>
+      <div class="help-row"><div class="help-icon">🔔</div><div class="help-text"><strong>עדכנתי את הרשימה</strong> — שולח התראה לכל המחוברים. כפתור יהפוך אדום עד שמישהו מאשר, ואז ירוק</div></div>
     </div>
 
     <div class="help-section">
-      <div class="help-section-title">שיתוף עם בני משפחה</div>
-      <div class="help-row"><div class="help-icon">🔗</div><div class="help-text">לחץ <strong>שיתוף</strong> ושלח את קוד השיתוף — כל מי שיכניס אותו יראה ויערוך את אותה הרשימה בזמן אמת</div></div>
-      <div class="help-row"><div class="help-icon">🟢</div><div class="help-text">הנקודה הירוקה בראש המסך: <strong>ירוק</strong> = מחובר · <strong>כתום</strong> = שומר · <strong>אדום</strong> = שגיאת חיבור</div></div>
+      <div class="help-section-title">📂 ניהול קטגוריות</div>
+      <div class="help-row"><div class="help-icon">📂</div><div class="help-text"><strong>פתיחה</strong> — לחץ על כפתור הקטגוריות בסרגל הכלים</div></div>
+      <div class="help-row"><div class="help-icon">👆</div><div class="help-text"><strong>פתיחת קטגוריה</strong> — לחץ על קטגוריה לראות את הפריטים שלה. מתוכה ניתן לערוך שם, לשנות שיוך ולמחוק</div></div>
+      <div class="help-row"><div class="help-icon">✏️</div><div class="help-text"><strong>שינוי שם קטגוריה</strong> — לחץ על ✏️. האפליקציה תזכור את הקשר ותשתמש בשם החדש גם בהצעות אוטומטיות עתידיות</div></div>
+      <div class="help-row"><div class="help-icon">↕️</div><div class="help-text"><strong>סידור מחדש</strong> — גרור קטגוריה לשינוי הסדר. הסדר משפיע על תצוגת הבנק והרשימה</div></div>
+      <div class="help-row"><div class="help-icon">🧠</div><div class="help-text"><strong>למידה חכמה</strong> — כשאתה משייך פריט לקטגוריה ידנית, האפליקציה זוכרת ומשתמשת בזה בפעם הבאה אוטומטית (נשמר בענן)</div></div>
     </div>
 
     <div class="help-section">
       <div class="help-section-title">🧺 סלים</div>
-      <div class="help-row"><div class="help-icon">🧺</div><div class="help-text"><strong>סל</strong> הוא קבוצת פריטים קבועה (למשל "סל שבתי"). לחץ "הוסף לרשימה" כדי להכניס את כולם בבת אחת</div></div>
-      <div class="help-row"><div class="help-icon">+</div><div class="help-text">יצירת סל חדש — ידנית או <strong>טעינת טקסט</strong> (הדבקת רשימה)</div></div>
+      <div class="help-row"><div class="help-icon">🧺</div><div class="help-text"><strong>סל</strong> הוא קבוצת פריטים קבועה (למשל "סל שבתי"). לחץ "הוסף לרשימה" להכניס את כולם בבת אחת</div></div>
+      <div class="help-row"><div class="help-icon">+</div><div class="help-text"><strong>יצירת סל</strong> — ידנית, בחירה מהבנק, או <strong>טעינת טקסט</strong> (הדבקת רשימה)</div></div>
+      <div class="help-row"><div class="help-icon">☑️</div><div class="help-text"><strong>הוספה לסל</strong> — בחר פריטים עם "בחירה מרובה" ואז לחץ "🧺 לסל" לבחירת הסל הרצוי</div></div>
     </div>
 
     <div class="help-section">
       <div class="help-section-title">📋 טעינת רשימה</div>
-      <div class="help-row"><div class="help-icon">📋</div><div class="help-text">הדבק כל טקסט עם מצרכים — שורות, פסיקים, ווטסאפ. האפליקציה מנתחת ומגדירה קטגוריה לכל פריט</div></div>
+      <div class="help-row"><div class="help-icon">📋</div><div class="help-text">הדבק כל טקסט עם מצרכים — שורות, פסיקים, כמויות, ווטסאפ. האפליקציה מנתחת ומגדירה קטגוריה לכל פריט</div></div>
       <div class="help-row"><div class="help-icon">🎯</div><div class="help-text">בחר <strong>בנק בלבד</strong> או <strong>רשימה + בנק</strong>. סמן / בטל סימון לפריטים לפני הטעינה</div></div>
     </div>
 
     <div class="help-section">
-      <div class="help-section-title">כלים נוספים</div>
-      <div class="help-row"><div class="help-icon">↩</div><div class="help-text"><strong>בטל</strong> — מבטל את הפעולה האחרונה (עד 30 פעולות)</div></div>
+      <div class="help-section-title">🔗 שיתוף ורשימות מרובות</div>
+      <div class="help-row"><div class="help-icon">🔗</div><div class="help-text"><strong>שיתוף</strong> — לחץ שיתוף ושלח קוד בן 6 תווים. כל מי שיכניס אותו יראה ויערוך את אותה הרשימה בזמן אמת</div></div>
+      <div class="help-row"><div class="help-icon">🟢</div><div class="help-text">נקודה בראש המסך: <strong>ירוק</strong> = מחובר · <strong>כתום</strong> = שומר · <strong>אדום</strong> = שגיאת חיבור</div></div>
+      <div class="help-row"><div class="help-icon">👑</div><div class="help-text"><strong>מנהל הרשימה</strong> — מי שיצר את הרשימה. המנהל יכול למחוק אותה לכולם לצמיתות, או להסיר רק ממכשירו</div></div>
+      <div class="help-row"><div class="help-icon">🏠</div><div class="help-text"><strong>לובי</strong> — לחץ על הבית לחזרה ללובי. הרשימות האחרונות נשמרות לגישה מהירה</div></div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title">⚙️ כלים נוספים</div>
+      <div class="help-row"><div class="help-icon">↩</div><div class="help-text"><strong>בטל</strong> — מבטל את הפעולה האחרונה (עד 30 פעולות אחורה)</div></div>
       <div class="help-row"><div class="help-icon">⇅</div><div class="help-text"><strong>תצוגה</strong> — החלפה בין בנק למעלה / רשימה למעלה</div></div>
-      <div class="help-row"><div class="help-icon">📂</div><div class="help-text"><strong>קטגוריות</strong> — הוספה, עריכה ושינוי קטגוריה לפריטים</div></div>
-      <div class="help-row"><div class="help-icon">🏠</div><div class="help-text"><strong>בית</strong> — חזרה ללובי ומעבר לרשימה אחרת</div></div>
+      <div class="help-row"><div class="help-icon">◀</div><div class="help-text"><strong>כפתור Back</strong> — סוגר תפריטים ומודלים. בלובי: הקשה כפולה יוצאת מהאפליקציה</div></div>
     </div>
 
     <button class="btn-secondary" onclick="closeHelp()" style="margin-top:4px;">סגור</button>
