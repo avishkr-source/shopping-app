@@ -1321,9 +1321,12 @@ async function joinList() {
 function enterList(code, listName) {
   currentListId = code;
   // Reset state fully before loading new list
-  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName: listName||"", baskets:[] };
+  state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName: listName||"", baskets:[], learnedCatMap:{} };
   undoStack.length = 0;
   document.getElementById("undoBtn").disabled = true;
+  // Reset sync vars so applyRemoteData doesn't skip the first snapshot
+  clearTimeout(saveTimer); saveTimer = null;
+  lastSavedHash = "__RESET__";
   renderBank(); renderCart();
   // Save to history
   addToSavedLists(code, listName || "רשימת קניות");
@@ -1345,6 +1348,8 @@ function enterList(code, listName) {
 
 function leaveList() {
   if (firestoreUnsub) { firestoreUnsub(); firestoreUnsub = null; }
+  clearTimeout(saveTimer); saveTimer = null;
+  lastSavedHash = "";
   removePresence();
   notifActive = false;
   notifConfirmed = false;
