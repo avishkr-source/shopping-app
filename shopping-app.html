@@ -1073,45 +1073,13 @@ const auth = firebase.auth();
 // ═══════════════════════════════════════════════════
 // AUTO-CATEGORY DICTIONARY
 // ═══════════════════════════════════════════════════
-const CAT_RULES = [
-  { cat:"ירקות ופירות", words:["עגבניה","עגבניות","מלפפון","מלפפונים","חסה","גזר","גזרים","בצל","בצלים","שום","פלפל","פלפלים","תפוח אדמה","תפוחי אדמה","קישוא","קישואים","חציל","חצילים","ברוקולי","כרובית","כרוב","תרד","סלרי","אבוקדו","אבוקדואים","תירס","אספרגוס","פטריות","פטריה","לימון","לימונים","ליים","תפוח","תפוחים","בננה","בננות","ענבים","תפוז","תפוזים","מנדרינה","מנדרינות","אפרסמון","אגס","אגסים","שזיף","שזיפים","אפרסק","אפרסקים","דובדבן","דובדבנים","מנגו","פפאיה","אבטיח","מלון","קלמנטינה","גויאבה","פסיפלורה","רימון","רימונים","תאנה","תאנים","תות","תותים","אוכמנית","פטל","כרישה","כרישות","זוקיני","ארטישוק","עירית","פטרוזיליה","כוסברה","שמיר","בזיליקום","נענע","טימין","רוזמרין","ג׳ינג׳ר","כורכום","סלק","בטטה","בטטות","ירקות","פירות","סלט","ירק","פרי"] },
-  { cat:"מוצרי חלב", words:["חלב","שמנת","גבינה","גבינות","יוגורט","קוטג'","לבן","קפיר","גבינה צהובה","גבינה לבנה","מוצרלה","פרמזן","בולגרית","פטה","ריקוטה","קממבר","ברי","גאודה","צ׳דר","אמנטל","עמק","חלב עיזים","חלב כבשים","שמנת חמוצה","שמנת מתוקה","שמנת להקצפה","חמאה","מרגרינה","ממרח","מסקרפונה","לאבנה","שקדייה","פרוביון","מנצ׳גו","חלב סויה","שוקו","מוצרי חלב","קצפת","אשל","גבינת שמנת","חלב דל שומן","חלב מלא"] },
-  { cat:"בשר ודגים", words:["עוף","עופות","חזה עוף","שוק עוף","כנפיים","כנף","פרגית","שניצל","קציצה","קציצות","בשר","בשר בקר","בשר טחון","אנטריקוט","פילה","סטייק","צלעות","כבש","טלה","הודו","ברווז","אווז","כבד","לב","כליות","נקניק","נקניקיות","המבורגר","שווארמה","קבב","דג","דגים","סלמון","טונה","פורל","דניס","לברק","אמנון","קרפיון","בקלה","הרינג","מקרל","סרדינים","שרימפס","לובסטר","קלמרי","קרב","סושי","גפילטע","ביצים","ביצה","ביצי חופש","ביצה אורגנית","בשר טלה","אסאדו","שפונדרה","כתף","סינטה","פיקניה"] },
-  { cat:"לחם ומאפים", words:["לחם","לחמים","פיתה","פיתות","בגט","לחמנייה","לחמניות","חלה","לחם שיפון","לחם מלא","לחם לבן","לחם שחור","טוסט","קרואסון","מאפה","מאפים","בורקס","פשטידה","קיש","עוגיות","עוגה","עוגת שוקולד","גבעות","אקלר","רולדה","בראוניז","מאפין","קאפקייק","פנקייק","וופל","פיצה","לחם פיתה","לחם דגנים","לחם כוסמין","טורטייה","לאפה","לחוח","מצה","כרכרת","רוגלך","הרוגלה","סינבון","קניש","עלי בצק","בצק עלים","קמח","סוכר","מלח","פלפל שחור","פפריקה","כמון","אורז","פסטה","ספגטי","מקרוני","פנה","פוזילי","אטריות","קוסקוס","בורגול","קינואה","עדשים","שעועית","חומוס יבש","אפונה","סויה","גרגרי חומוס","אורז מלא","אורז בסמטי","גריסים"] },
-  { cat:"שתייה", words:["מים","מים מינרלים","מים מוגזים","סודה","קולה","פפסי","ספרייט","פאנטה","רד בול","מיץ","מיצים","מיץ תפוחים","מיץ ענבים","מיץ גזר","מיץ תפוזים","תה","קפה","שוקולד חם","קפה נמס","אספרסו","קפוצ׳ינו","לאטה","קפה שחור","בירה","יין","יין אדום","יין לבן","יין רוזה","וודקה","ויסקי","רום","קוניאק","שמפניה","קוקטייל","ליקר","עראק","בירה שחורה","בירה לבנה","סיידר","קומבוצ׳ה","אנרגטיק","שייק","סמות׳י","לימונדה","גזוז","מי ברז","מי שתייה"] },
-  { cat:"חטיפים וממתקים", words:["שוקולד","שוקולד חלב","שוקולד מריר","שוקולד לבן","קיטקט","סניקרס","מארס","טוויקס","בונבון","סוכריות","מסטיק","ארטיק","גלידה","גלידת וניל","שוקו בר","ופל","בר","במבה","ביסלי","אחלה","תפוצ׳יפס","פרינגלס","דוריטוס","פופקורן","קרקרים","חטיף","אגוזים","בוטנים","שקדים","קשיו","פיסטוק","מלאח","גרנולה","דגני בוקר","קורנפלקס","חטיפי בריאות","חטיף אנרגיה","ממתק","ממתקים","לחמנייה מתוקה","קרמל","טופי","מרמלדה","ג׳לי","הלבה","טחינה מתוקה","ריבה","שוקולד עם אגוזים","פצפוצים"] },
-  { cat:"ניקיון ותכשירים", words:["סבון","שמפו","מרכך","מרכך שיער","קרם","תחליב","לוסיון","דאודורנט","בושם","ספריי","משחת שיניים","מברשת שיניים","חוט דנטלי","שטיפת פה","תחליב גוף","קרם לחות","נייר טואלט","מגבונים","מגבות נייר","ממחטות","חיתולים","מוצצים","פודרה","שמן תינוק","אפטר שייב","סכין גילוח","קרם גילוח","קוטי","לק","מסיר לק","קרם עיניים","מסקרה","אייליינר","פנדה","שפתון","קרם הגנה","קרם לילה","סרום","מסיר איפור","כלי ניקיון","אקונומיקה","אבקת כביסה","מרכך כביסה","נוזל כלים","ספוג","מטאטא","מגב","שואב אבק","שקיות אשפה","ניחוח לבית","ספריי לניקוי","ג׳ל רחצה"] },
-  { cat:"קפואים", words:["קפוא","קפואים","ירקות קפואים","פירות קפואים","דגים קפואים","עוף קפוא","בשר קפוא","פיצה קפואה","שניצל קפוא","נאגטס","פופקורן קפוא","ברוקולי קפוא","אפונה קפואה","תירס קפוא","שעועית קפואה","פרייז","צ׳יפס קפוא","גלידה","ארטיק","שייקים קפואים","בצק קפוא","רביולי קפוא","בורקס קפוא","קרואסון קפוא","לחמניות קפואות","פלאפל קפוא"] },
-  { cat:"שימורים", words:["שימורים","שימור","טונה שימורים","סרדינים שימורים","עגבניות שימורים","רסק עגבניות","שעועית שימורים","חומוס שימורים","תירס שימורים","מלפפון חמוץ","זיתים","זית","אנשובי","פטה שימורים","ריבה","דבש","ממרח","ממרח שוקולד","נוטלה","חמאת בוטנים","טחינה","חרדל","קטשופ","מיונז","רוטב","רוטב עגבניות","רוטב סויה","חומץ","שמן","שמן זית","שמן קוקוס","שמן שומשום","מרק מוכן","פסטה מוכנה","שעועית לבנה","עדשים","חמוצים","כבוש","קוקוס שימורים"] }
-];
-const WORD_TO_CAT = {};
-CAT_RULES.forEach(r => r.words.forEach(w => { WORD_TO_CAT[w.trim().toLowerCase()] = r.cat; }));
-
-function guessCategory(name) {
-  if (!name) return null;
-  const lower = name.trim().toLowerCase();
-  // Learned mappings take priority over built-in dictionary
-  if (state.learnedCatMap && state.learnedCatMap[lower]) return state.learnedCatMap[lower];
-  if (WORD_TO_CAT[lower]) return WORD_TO_CAT[lower];
-  const sorted = Object.keys(WORD_TO_CAT).sort((a,b) => b.length - a.length);
-  for (const kw of sorted) { if (lower.includes(kw) || kw.includes(lower)) return WORD_TO_CAT[kw]; }
-  if (lower.length >= 3) { const root = lower.substring(0,3); for (const kw of sorted) { if (kw.startsWith(root)) return WORD_TO_CAT[kw]; } }
-  return null;
-}
-
-// When user manually assigns a category — remember it for future guesses
-function learnCategory(name, cat) {
-  if (!name || !cat || cat === "כללי") return;
-  const lower = name.trim().toLowerCase();
-  WORD_TO_CAT[lower] = cat;
-  if (!state.learnedCatMap) state.learnedCatMap = {};
-  state.learnedCatMap[lower] = cat;
-}
-
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-const DEFAULT_CATS = ["כללי","ירקות ופירות","מוצרי חלב","בשר ודגים","לחם ומאפים","שתייה","חטיפים וממתקים","ניקיון ותכשירים","קפואים","שימורים"];
+const DEFAULT_CATS = ["כללי"];
+function guessCategory() { return null; }
+function learnCategory() {}
+
 let state = { bank:[], cart:[], categories:[...DEFAULT_CATS], catSort:"alpha", bankSort:"cat", bankShow:"all", viewOrder:"bankFirst", listName:"", baskets:[], learnedCatMap:{} };
 
 // Firebase state
@@ -1195,11 +1163,8 @@ function applyRemoteData(data) {
   }
   if (data.baskets) state.baskets = data.baskets;
   if (data.ownerUid !== undefined) state.ownerUid = data.ownerUid;
-  // Restore learned category mappings and apply to WORD_TO_CAT
-  if (data.learnedCatMap) {
-    state.learnedCatMap = data.learnedCatMap;
-    Object.entries(data.learnedCatMap).forEach(([word, cat]) => { WORD_TO_CAT[word] = cat; });
-  }
+  // Restore learned category mappings
+  if (data.learnedCatMap) state.learnedCatMap = data.learnedCatMap;
   lastSavedHash = incoming;
   try { localStorage.setItem("shoppingApp_v5", JSON.stringify({ ...state, listId: currentListId })); } catch(e){}
   renderBank(); renderCart(); updateHeader(); applyViewOrder(); syncBankSortButtons();
@@ -1697,7 +1662,7 @@ function addBasketToCart(basket) {
     } else if (!state.cart.some(c => c.name === itemName)) {
       // Not in bank — create new item with ✨ and add straight to cart
       const cat = guessCategory(itemName) || "כללי";
-      const newItem = {id:uid(), name:itemName, category:cat, autoClassified:true};
+      const newItem = {id:uid(), name:itemName, category:cat};
       state.cart.push({...newItem, note:"", qty:0, status:null});
       added++;
     }
@@ -1794,7 +1759,7 @@ function addItemToBasketEdit() {
     // Also add to bank if not already there
     if (!state.bank.some(i=>i.name===name) && !state.cart.some(i=>i.name===name)) {
       const cat = guessCategory(name) || "כללי";
-      state.bank.push({id:uid(), name, category:cat, autoClassified:true});
+      state.bank.push({id:uid(), name, category:cat});
       save(); renderBank();
     }
   }
@@ -1969,7 +1934,7 @@ function doImport() {
     items.forEach(name => {
       if (!state.bank.some(i=>i.name===name) && !state.cart.some(i=>i.name===name)) {
         const cat = guessCategory(name)||"כללי";
-        state.bank.push({id:uid(), name, category:cat, autoClassified:true});
+        state.bank.push({id:uid(), name, category:cat});
       }
     });
     state.baskets.push({ id:uid(), name:basketName, items });
@@ -1985,7 +1950,7 @@ function doImport() {
     const inBank = state.bank.some(i => i.name === item.name);
     const inCart = state.cart.some(i => i.name === item.name);
     if (!inBank && !inCart) {
-      const newItem = { id: uid(), name: item.name, category: item.category, autoClassified: true };
+      const newItem = { id: uid(), name: item.name, category: item.category };
       if (importDest === "cart") {
         state.cart.push({ ...newItem, note: "", qty: item.qty || 0, status: null });
         addedCart++;
@@ -2111,24 +2076,8 @@ function setBankShow(mode) {
   syncBankSortButtons();
   renderBank();
 }
-function confirmAutoClassified(id) {
-  const item = state.bank.find(i=>i.id===id); if(!item) return;
-  showConfirm({
-    icon: "✨",
-    title: "שיוך קטגוריה",
-    msg: `לשייך את "${item.name}" לקטגוריה "${item.category}"?`,
-    okLabel: "אישור ✓",
-    okColor: "var(--blue)",
-    onOk: () => {
-      const idx = state.bank.findIndex(i=>i.id===id);
-      if (idx!==-1) { learnCategory(item.name, item.category); state.bank[idx].autoClassified=false; save(); renderBank(); if(catOverlayOpen) renderCatItems(); }
-      showToast("✅ קטגוריה אושרה");
-    }
-  });
-}
-
 // ── BANK FILTER ───────────────────────────────────
-const bankActiveFilters = new Set(); // "unconfirmed" | category name
+const bankActiveFilters = new Set(); // category name
 
 // ── MULTI-SELECT ──────────────────────────────────
 let bankSelectMode = false;
@@ -2253,7 +2202,6 @@ function buildBankFilterMenu() {
   const menu = document.getElementById("bankFilterMenu");
   menu.innerHTML = "";
 
-  const hasUnconfirmed = state.bank.some(i => i.autoClassified);
   const cats = [...new Set(state.bank.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
 
   const addOption = (label, key, color) => {
@@ -2278,10 +2226,6 @@ function buildBankFilterMenu() {
     menu.appendChild(row);
   };
 
-  if (hasUnconfirmed) {
-    addOption("✨ ממתין לאישור", "unconfirmed", "#a07800");
-    const hr = document.createElement("div"); hr.style.cssText="height:1px;background:var(--border);margin:4px 0;"; menu.appendChild(hr);
-  }
   cats.forEach(cat => addOption(cat, cat));
 
   if (bankActiveFilters.size > 0) {
@@ -2322,12 +2266,11 @@ function renderBank() {
     });
   }
 
-  // Apply active filters (filter on category/unconfirmed, but keep _inCart items through)
+  // Apply active filters
   if (bankActiveFilters.size > 0) {
     items = items.filter(i => {
-      if (bankActiveFilters.has("unconfirmed") && i.autoClassified && !i._inCart) return true;
-      if (bankActiveFilters.has(i.category||"כללי")) return true;
-      return false;
+      if (i._inCart) return true;
+      return bankActiveFilters.has(i.category||"כללי");
     });
   }
   if (searchVal) items = items.filter(i=>i.name.toLowerCase().includes(searchVal));
@@ -2358,14 +2301,7 @@ function renderBank() {
     el.className = "bank-item" + (item._inCart ? " in-cart" : "") + (bankSelectMode && bankSelected.has(item.id) ? " selected" : "");
     el.dataset.id = item.id;
     const nameSpan = document.createElement("span"); nameSpan.textContent=item.name; el.appendChild(nameSpan);
-    if (!item._inCart && item.autoClassified) {
-      const badge = document.createElement("span"); badge.className="bank-item-unconfirmed"; badge.textContent="✨";
-      badge.title=`סווג אוטומטית: ${item.category} — לחץ לאישור`;
-      badge.onpointerdown=e=>{ e.stopPropagation(); };
-      badge.onpointerup=e=>{ e.stopPropagation(); };
-      badge.onclick=e=>{ e.stopPropagation(); confirmAutoClassified(item.id); };
-      el.appendChild(badge);
-    } else if (!item._inCart && item.category && item.category!=="כללי" && state.bankSort!=="cat") {
+    if (!item._inCart && item.category && item.category!=="כללי" && state.bankSort!=="cat") {
       const catLabel=document.createElement("span"); catLabel.className="bank-item-cat"; catLabel.textContent=item.category; el.appendChild(catLabel);
     }
     if (!item._inCart) {
@@ -2637,7 +2573,7 @@ function addToBankAndCart() {
   if(state.cart.some(i=>i.name===name)){showToast("פריט זה כבר ברשימה"); return;}
   pushUndo();
   const cat = guessCategory(name)||"כללי";
-  const item = {id:uid(), name, category:cat, autoClassified:true};
+  const item = {id:uid(), name, category:cat};
   if(!state.bank.some(i=>i.name===name)) state.bank.push(item);
   state.cart.push({...item, note:"", noteText:"", qty:0, status:null});
   inp.value=""; document.getElementById("acSuggestion").innerHTML=""; closeAcDropdown(); document.getElementById("catPreview").textContent="";
@@ -2648,7 +2584,7 @@ function addToBank() {
   if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט זה כבר קיים");return;}
   pushUndo();
   const guessed=guessCategory(name); const cat=guessed||"כללי";
-  state.bank.push({id:uid(),name,category:cat,autoClassified:true});
+  state.bank.push({id:uid(),name,category:cat});
   inp.value=""; document.getElementById("acSuggestion").innerHTML=""; closeAcDropdown(); document.getElementById("catPreview").textContent="";
   save(); renderBank();
 }
@@ -2658,7 +2594,7 @@ function addToBankFromCat() {
   if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט זה כבר קיים"); return;}
   pushUndo();
   const cat = guessCategory(name) || "כללי";
-  state.bank.push({id:uid(), name, category:cat, autoClassified:true});
+  state.bank.push({id:uid(), name, category:cat});
   inp.value=""; save(); renderBank(); renderCatItems();
   showToast(`✅ "${name}" נוסף לבנק`);
 }
@@ -2695,7 +2631,7 @@ function confirmResetCart() {
 }
 function doResetCart() {
   pushUndo();
-  state.cart.forEach(item => { if(!state.bank.some(b=>b.id===item.id)) state.bank.push({id:item.id,name:item.name,category:item.category,autoClassified:item.autoClassified||false}); });
+  state.cart.forEach(item => { if(!state.bank.some(b=>b.id===item.id)) state.bank.push({id:item.id,name:item.name,category:item.category}); });
   state.cart = [];
   save(); renderBank(); renderCart();
   showToast("✅ הרשימה אופסה");
@@ -2835,7 +2771,7 @@ function dedup(arr) {
 function removeFromCart(id) {
   pushUndo(); const item=state.cart.find(i=>i.id===id); if(!item)return;
   state.cart=state.cart.filter(i=>i.id!==id);
-  bankPush({id:item.id, name:item.name, category:item.category, autoClassified:item.autoClassified||false});
+  bankPush({id:item.id, name:item.name, category:item.category});
   save(); renderBank(); renderCart();
 }
 function setCartStatus(id,status) {
@@ -2904,9 +2840,9 @@ function saveEdit(){
   pushUndo();
   learnCategory(name, cat);
   const bankIdx=state.bank.findIndex(i=>i.id===editTarget.id);
-  if(bankIdx!==-1){state.bank[bankIdx].name=name;state.bank[bankIdx].category=cat;state.bank[bankIdx].autoClassified=false;}
+  if(bankIdx!==-1){state.bank[bankIdx].name=name;state.bank[bankIdx].category=cat;}
   const cartIdx=state.cart.findIndex(i=>i.id===editTarget.id);
-  if(cartIdx!==-1){state.cart[cartIdx].name=name;state.cart[cartIdx].category=cat;state.cart[cartIdx].autoClassified=false;}
+  if(cartIdx!==-1){state.cart[cartIdx].name=name;state.cart[cartIdx].category=cat;}
   save(); renderBank(); renderCart(); closeEditModal();
 }
 
@@ -2921,12 +2857,12 @@ function closeFinishModal(){ document.getElementById("finishOverlay").style.disp
 function finishReturnPending(){ doFinish(finishPending); closeFinishModal(); }
 function finishKeepPending(){
   pushUndo(); const done=state.cart.filter(i=>i.status==="done"); const keep=state.cart.filter(i=>i.status!=="done");
-  done.forEach(i=>bankPush({id:i.id,name:i.name,category:i.category,autoClassified:i.autoClassified||false})); state.cart=keep;
+  done.forEach(i=>bankPush({id:i.id,name:i.name,category:i.category})); state.cart=keep;
   save(); renderBank(); renderCart(); closeFinishModal(); showToast("הקניות הסתיימו!");
 }
 function doFinish(pendingToReturn){
   pushUndo(); const done=state.cart.filter(i=>i.status==="done"); const cancel=state.cart.filter(i=>i.status==="cancel");
-  [...done,...pendingToReturn].forEach(i=>bankPush({id:i.id,name:i.name,category:i.category,autoClassified:i.autoClassified||false}));
+  [...done,...pendingToReturn].forEach(i=>bankPush({id:i.id,name:i.name,category:i.category}));
   state.cart=cancel; save(); renderBank(); renderCart(); showToast("הקניות הסתיימו!");
 }
 
@@ -2947,22 +2883,19 @@ function buildCatFilterMenu() {
   const dd = document.getElementById("catFilterDropdown");
   dd.innerHTML = "";
   const allItems = [...state.bank, ...state.cart];
-  const hasUnconfirmed = allItems.some(i => i.autoClassified);
   const usedCats = [...new Set(allItems.map(i => i.category||"כללי"))].sort((a,b)=>a.localeCompare(b,"he"));
 
-  const mkOption = (label, key, isUnconf=false) => {
+  const mkOption = (label, key) => {
     const opt = document.createElement("div"); opt.className = "filter-option";
     const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = catActiveFilters.has(key);
     cb.style.cssText = "width:15px;height:15px;accent-color:var(--blue);flex-shrink:0;cursor:pointer;";
     cb.onchange = () => { catActiveFilters.has(key) ? catActiveFilters.delete(key) : catActiveFilters.add(key); updateCatFilterBtn(); renderCatItems(); };
     const lbl = document.createElement("span"); lbl.textContent = label;
-    if (isUnconf) lbl.style.color = "#a07800";
     opt.appendChild(cb); opt.appendChild(lbl);
     opt.onclick = e => { if(e.target!==cb){ cb.checked=!cb.checked; cb.onchange(); } };
     dd.appendChild(opt);
   };
 
-  if (hasUnconfirmed) { mkOption("✨ ממתין לאישור", "unconfirmed", true); dd.appendChild(Object.assign(document.createElement("div"), {className:"filter-divider"})); }
   usedCats.forEach(cat => mkOption(cat, cat));
 
   if (catActiveFilters.size > 0) {
@@ -3066,7 +2999,7 @@ function renderCatTags(){
       const doAdd=()=>{
         const name=addInp.value.trim(); if(!name)return;
         if(state.bank.some(i=>i.name===name)||state.cart.some(i=>i.name===name)){showToast("פריט כבר קיים");return;}
-        pushUndo(); state.bank.push({id:uid(),name,category:cat,autoClassified:false}); addInp.value=""; save(); renderBank(); renderCatTags();
+        pushUndo(); state.bank.push({id:uid(),name,category:cat}); addInp.value=""; save(); renderBank(); renderCatTags();
       };
       addBtn.onclick=doAdd; addInp.onkeydown=e=>{if(e.key==="Enter")doAdd();};
       addRow.appendChild(addInp); addRow.appendChild(addBtn); panel.appendChild(addRow);
@@ -3080,19 +3013,13 @@ function renderCatTags(){
         const empty=document.createElement("div"); empty.style.cssText="text-align:center;color:var(--text-dim);font-size:12px;padding:8px;"; empty.textContent="אין פריטים"; panel.appendChild(empty);
       } else {
         items.forEach(item=>{
-          const irow=document.createElement("div"); irow.className="cat-item-row"+(item.autoClassified?" unconfirmed":"");
+          const irow=document.createElement("div"); irow.className="cat-item-row";
           const namePart=document.createElement("span"); namePart.className="cat-item-name"; namePart.textContent=item.name;
           if(item._src==="bank"){
             namePart.style.cursor="text";
             namePart.onclick=()=>startEditCatItemName(item,irow,namePart);
           }
           irow.appendChild(namePart);
-
-          if(item.autoClassified&&item._src==="bank"){
-            const badge=document.createElement("span"); badge.className="cat-item-badge"; badge.textContent="✨"; badge.title="סווג אוטומטית — לחץ לאישור";
-            badge.onclick=()=>confirmAutoClassified(item.id);
-            irow.appendChild(badge);
-          }
 
           const srcTag=document.createElement("span"); srcTag.style.cssText="font-size:10px;color:var(--text-dim);margin-right:auto;flex-shrink:0;";
           srcTag.textContent=item._src==="cart"?"🛒":"";
@@ -3106,7 +3033,7 @@ function renderCatTags(){
             pushUndo();
             const newCat=sel.value;
             learnCategory(item.name, newCat);
-            if(item._src==="bank"){ const idx=state.bank.findIndex(x=>x.id===item.id); if(idx!==-1){state.bank[idx].category=newCat;state.bank[idx].autoClassified=false;} }
+            if(item._src==="bank"){ const idx=state.bank.findIndex(x=>x.id===item.id); if(idx!==-1){state.bank[idx].category=newCat;} }
             else { const idx=state.cart.findIndex(x=>x.id===item.id); if(idx!==-1) state.cart[idx].category=newCat; }
             item.category=newCat; save(); renderBank(); renderCart(); renderCatTags();
           };
