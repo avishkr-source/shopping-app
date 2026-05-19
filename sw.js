@@ -1,6 +1,6 @@
-const CACHE_NAME = "shopping-app-v1";
+const CACHE_NAME = "shopping-app-v2";
 const ASSETS = [
-  "./shopping-app-v46.html",
+  "./shopping-app.html",
   "./manifest.json"
 ];
 
